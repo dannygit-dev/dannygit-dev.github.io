@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Ze Tracker</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1c1c1a;line-height:1.5;padding-bottom:80px;min-height:100vh}
+button{cursor:pointer;font:inherit;border:none;background:none}
+input,select,textarea{font:inherit;border:1px solid #e5e3db;border-radius:8px;padding:8px 10px;background:#fff;color:#1c1c1a;width:100%}
+input:focus,select:focus{outline:2px solid #1a2e1a;outline-offset:1px}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* ── APP SHELL ── */
+.app-header{background:#1a2e1a;color:#e8f5e9;padding:14px 16px 10px;position:sticky;top:0;z-index:100}
+.app-header h1{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.app-header .sub{font-size:11px;color:#86efac;margin-top:1px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e5e3db;display:flex;z-index:100}
+.nav button{flex:1;padding:10px 4px 8px;font-size:10px;color:#9ca3af;display:flex;flex-direction:column;align-items:center;gap:2px;transition:color .15s}
+.nav button .ico{font-size:20px;line-height:1}
+.nav button.active{color:#1a2e1a;font-weight:600}
+.content{padding:14px 14px 0}
+
+/* ── CARDS / PANELS ── */
+.panel{background:#fff;border:1px solid #e5e3db;border-radius:12px;padding:14px;margin-bottom:12px}
+.panel-title{font-size:13px;font-weight:600;color:#374151;margin-bottom:10px}
+.sect-label{font-size:11px;color:#9ca3af;font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s}
+.btn:active{opacity:.8}
+.btn-primary{background:#1a2e1a;color:#e8f5e9}
+.btn-blue{background:#1e40af;color:#fff}
+.btn-red{background:#dc2626;color:#fff}
+.btn-ghost{background:transparent;border:1px solid #e5e3db;color:#374151}
+.btn-sm{padding:5px 12px;font-size:13px}
+.btn-xs{padding:3px 9px;font-size:12px}
+.btn-full{width:100%}
+.btn-icon{padding:6px 8px;font-size:16px;color:#9ca3af}
+
+/* ── BADGES ── */
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:12px;font-weight:500}
+.badge-compound{background:#dbeafe;color:#1e40af}
+.badge-isolation{background:#f3f4f6;color:#4b5563}
+.badge-burnout{background:#d1fae5;color:#065f46}
+
+/* ── TRAIN TAB ── */
+.session-start{text-align:center;padding:32px 16px}
+.session-start h2{font-size:18px;color:#1c1c1a;margin-bottom:6px}
+.session-start p{font-size:13px;color:#6b7280;margin-bottom:20px}
+.day-picker{display:grid;gap:8px}
+.day-card{padding:14px;border:1px solid #e5e3db;border-radius:10px;text-align:left;cursor:pointer;transition:all .15s;background:#fff}
+.day-card:hover{border-color:#1a2e1a}
+.day-card.selected{border-color:#1a2e1a;background:#f0fdf4}
+.day-card .day-name{font-size:14px;font-weight:600;color:#1c1c1a}
+.day-card .day-focus{font-size:12px;color:#6b7280}
+.day-card .ex-count{font-size:11px;color:#9ca3af;margin-top:2px}
+
+/* ── SESSION VIEW ── */
+.session-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.session-timer{font-size:13px;color:#6b7280;font-variant-numeric:tabular-nums}
+.ex-block{background:#fff;border:1px solid #e5e3db;border-radius:12px;margin-bottom:10px;overflow:hidden}
+.ex-block-header{padding:12px 14px 8px;border-bottom:1px solid #f5f4f0}
+.ex-block-name{font-size:14px;font-weight:600}
+.ex-block-cue{font-size:11px;color:#9ca3af;margin-top:2px}
+.ex-prev{font-size:11px;color:#6b7280;padding:6px 14px;background:#f9fafb;border-bottom:1px solid #f0efeb}
+.ex-prev span{color:#1e40af;font-weight:500}
+.set-rows{padding:8px 14px}
+.set-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.set-num{font-size:12px;color:#9ca3af;min-width:20px;text-align:center}
+.set-input{width:68px;text-align:center;padding:7px 4px;font-size:15px;font-weight:500;flex-shrink:0}
+.set-x{color:#d1d5db;font-size:14px;flex-shrink:0}
+.set-check{width:32px;height:32px;border-radius:50%;border:2px solid #e5e3db;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;font-size:15px;color:transparent}
+.set-check.done{background:#16a34a;border-color:#16a34a;color:#fff}
+.set-add{color:#6b7280;font-size:12px;padding:6px 14px 10px;display:block;cursor:pointer;text-align:center}
+.set-add:hover{color:#1a2e1a}
+
+/* ── PR BOARD ── */
+.pr-table{width:100%;border-collapse:collapse;font-size:13px}
+.pr-table th{text-align:left;padding:6px 8px;font-size:11px;color:#9ca3af;font-weight:500;border-bottom:2px solid #e5e3db}
+.pr-table td{padding:8px;border-bottom:1px solid #f0efeb;vertical-align:middle}
+.pr-table .pr-wt{font-weight:700;color:#1e40af;font-size:15px}
+.pr-table .pr-vol{color:#16a34a;font-weight:600}
+.pr-table .pr-1rm{color:#7c3aed;font-size:12px}
+.pr-table .pr-date{color:#9ca3af;font-size:11px}
+
+/* ── PROGRAM TAB ── */
+.split-card{border:1px solid #e5e3db;border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+.split-card.active-split{border-color:#1a2e1a;background:#f0fdf4}
+.ex-list-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f5f4f0}
+.ex-list-item:last-child{border-bottom:none}
+.ex-grip{color:#d1d5db;cursor:grab;font-size:16px;flex-shrink:0}
+
+/* ── HISTORY ── */
+.session-hist{border:1px solid #e5e3db;border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff}
+.session-hist-hdr{padding:12px 14px;display:flex;justify-content:space-between;cursor:pointer}
+.session-hist-hdr:hover{background:#f9fafb}
+.session-hist-body{border-top:1px solid #f0efeb;padding:10px 14px;display:none}
+.session-hist-body.open{display:block}
+
+/* ── PROGRESS TAB ── */
+.prog-ex-select{margin-bottom:14px}
+.prog-chart{background:#f9fafb;border:1px solid #e5e3db;border-radius:10px;padding:12px;margin-bottom:12px}
+
+/* ── FORM ELEMENTS ── */
+.form-row{margin-bottom:10px}
+.form-label{font-size:12px;color:#6b7280;margin-bottom:4px;display:block}
+.form-row input,.form-row select{background:#f9fafb}
+.input-group{display:flex;gap:8px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal-overlay.hidden{display:none}
+.modal{background:#fff;border-radius:16px 16px 0 0;padding:20px 16px 32px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
+
+/* ── MISC ── */
+.empty-state{text-align:center;padding:40px 20px;color:#9ca3af}
+.empty-state .ico{font-size:36px;margin-bottom:8px}
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:3px;background:#f0fdf4;color:#065f46;margin-right:3px}
+.alert{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px}
+.alert-warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.alert-green{background:#f0fdf4;border:1px solid #86efac;color:#065f46}
+.row{display:flex;gap:8px;align-items:center}
+.grow{flex:1}
+.text-muted{color:#9ca3af;font-size:12px}
+.text-sm{font-size:13px}
+.divider{height:1px;background:#f0efeb;margin:10px 0}
+hr{border:none;border-top:1px solid #f0efeb;margin:12px 0}
+.tabs-inner{display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid #e5e3db;padding-bottom:0}
+.tab-inner-btn{font-size:13px;padding:6px 12px;color:#6b7280;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tab-inner-btn.on{color:#1a2e1a;font-weight:600;border-bottom-color:#1a2e1a}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>Ze Tracker</h1>
+  <div class="sub" id="hdr-sub">Select a split to begin</div>
+</div>
+
+<div id="main-content" class="content"></div>
+
+<nav class="nav">
+  <button onclick="goTab('train',this)" class="active">
+    <span class="ico">🏋️</span>Train
+  </button>
+  <button onclick="goTab('program',this)">
+    <span class="ico">📋</span>Program
+  </button>
+  <button onclick="goTab('prs',this)">
+    <span class="ico">🏆</span>PRs
+  </button>
+  <button onclick="goTab('history',this)">
+    <span class="ico">📅</span>History
+  </button>
+  <button onclick="goTab('progress',this)">
+    <span class="ico">📈</span>Progress
+  </button>
+</nav>
+
+<!-- MODAL -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-inner"></div>
+</div>
+
+<script>
+// ── STORAGE ──────────────────────────────────────────────────────────────────
+const MEM = {};
+async function sGet(k){try{if(window.storage){const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}}catch(e){}return MEM[k]||null;}
+async function sSet(k,v){try{if(window.storage){await window.storage.set(k,JSON.stringify(v));return;}}catch(e){}MEM[k]=v;}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let S = {
+  splits: [],
+  logs: [],
+  activeSplitId: null,
+  session: null   // in-progress session
+};
+
+async function persist(){
+  await sSet('wt-splits', S.splits);
+  await sSet('wt-logs', S.logs);
+  await sSet('wt-active', S.activeSplitId);
+  await sSet('wt-session', S.session);
+}
+async function loadState(){
+  const sp=await sGet('wt-splits'); if(sp&&sp.length)S.splits=sp;
+  const lg=await sGet('wt-logs');   if(lg)S.logs=lg;
+  const ac=await sGet('wt-active'); if(ac)S.activeSplitId=ac;
+  const se=await sGet('wt-session');if(se)S.session=se;
+  if(!S.splits.length) seedDefaultSplit();
+  if(!S.activeSplitId && S.splits.length) S.activeSplitId=S.splits[0].id;
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const uid=()=>Math.random().toString(36).slice(2,9);
+const r1=n=>Math.round(n*10)/10;
+const fmtDate=iso=>{if(!iso)return'';const[y,m,d]=iso.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return`${mn[+m-1]} ${+d}, ${y}`;};
+const today=()=>new Date().toISOString().slice(0,10);
+const elapsed=start=>{const s=Math.floor((Date.now()-start)/1000);const m=Math.floor(s/60);return`${m}:${String(s%60).padStart(2,'0')}`;};
+
+function getActiveSplit(){return S.splits.find(x=>x.id===S.activeSplitId)||S.splits[0]||null;}
+
+// 1RM Epley
+const epley=(w,r)=>r===1?w:Math.round(w*(1+r/30));
+
+// PR calculation from logs for an exercise name
+function getPR(exerciseName){
+  let bestWt=0, bestVol=0, best1rm=0, sessions=0, lastDate='';
+  for(const log of S.logs){
+    for(const ex of log.exercises){
+      if(ex.exerciseName!==exerciseName)continue;
+      sessions++;
+      if(log.date>lastDate)lastDate=log.date;
+      let vol=0,topW=0,top1rm=0;
+      for(const s of ex.sets){
+        if(!s.weight||!s.reps)continue;
+        vol+=s.weight*s.reps;
+        if(s.weight>topW)topW=s.weight;
+        const est=epley(s.weight,s.reps);
+        if(est>top1rm)top1rm=est;
+      }
+      if(topW>bestWt)bestWt=topW;
+      if(vol>bestVol)bestVol=vol;
+      if(top1rm>best1rm)best1rm=top1rm;
+    }
+  }
+  return{bestWt,bestVol,best1rm,sessions,lastDate};
+}
+
+// Get last session data for an exercise (for reference display)
+function getLastSession(exerciseName){
+  const relevant=S.logs.filter(l=>l.exercises.some(e=>e.exerciseName===exerciseName));
+  if(!relevant.length)return null;
+  relevant.sort((a,b)=>b.date.localeCompare(a.date));
+  const last=relevant[0];
+  const ex=last.exercises.find(e=>e.exerciseName===exerciseName);
+  return{date:last.date, sets:ex?.sets||[]};
+}
+
+// Get history for progress chart
+function getExerciseHistory(exerciseName){
+  const pts=[];
+  for(const log of S.logs){
+    for(const ex of log.exercises){
+      if(ex.exerciseName!==exerciseName)continue;
+      let topW=0,vol=0,top1rm=0;
+      for(const s of ex.sets){
+        if(!s.weight||!s.reps)continue;
+        vol+=s.weight*s.reps;
+        if(s.weight>topW)topW=s.weight;
+        const e=epley(s.weight,s.reps);
+        if(e>top1rm)top1rm=e;
+      }
+      if(topW>0)pts.push({date:log.date,topW,vol,top1rm});
+    }
+  }
+  return pts.sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+// ── DEFAULT SPLIT SEED ────────────────────────────────────────────────────────
+function seedDefaultSplit(){
+  const DAY_COLORS={Mon:'#1e40af',Tue:'#6d28d9',Thu:'#1e40af',Fri:'#6d28d9',Sat:'#065f46'};
+  const split={id:uid(),name:'Bulk Split',createdAt:today(),days:[
+    {id:uid(),name:'Monday',focus:'Quads',color:'#1e40af',exercises:[
+      {id:uid(),name:'BB Front Squat',type:'Compound',cue:'#1 fav — heavier sets first, drop to volume finish'},
+      {id:uid(),name:'BB Back Squat',type:'Compound',cue:''},
+      {id:uid(),name:'Lower-Half Squat',type:'Compound',cue:'Constant tension — stays loaded at bottom half'},
+      {id:uid(),name:'Cannonball Squat (DB)',type:'Compound',cue:'TUT focus — controlled eccentric'},
+      {id:uid(),name:'Bulgarian Split Squat',type:'Compound',cue:'Quad-forward lean, front foot elevated'},
+      {id:uid(),name:'Quad Extension',type:'Isolation',cue:'Drop set finish — descending weight'},
+      {id:uid(),name:'Step-Up Squats',type:'Isolation',cue:'Unilateral — knee-drive to quad squeeze at top'},
+      {id:uid(),name:'BB Calf Raise',type:'Isolation',cue:'Superset with SL Calf Raise'},
+      {id:uid(),name:'SL Calf Raise',type:'Isolation',cue:'Superset with BB Calf Raise'},
+    ]},
+    {id:uid(),name:'Tuesday',focus:'Push A',color:'#6d28d9',exercises:[
+      {id:uid(),name:'Seated Lateral Raise (warm-up)',type:'Burnout',cue:'Primes shoulder — light, pre-pressing'},
+      {id:uid(),name:'Weighted Push-Up',type:'Burnout',cue:'Full range — chest to floor'},
+      {id:uid(),name:'Flat BB Bench Press',type:'Compound',cue:'Reverse pyramid — heavy finish'},
+      {id:uid(),name:'Incline BB Bench',type:'Compound',cue:'Upper chest strength — consistent rep range'},
+      {id:uid(),name:'SA Incline DB Bench',type:'Compound',cue:'Single arm — full ROM, unilateral stability'},
+      {id:uid(),name:'Machine Fly',type:'Isolation',cue:'Drop set burnout'},
+      {id:uid(),name:'DB Pullovers',type:'Isolation',cue:'Serratus + chest stretch'},
+      {id:uid(),name:'CG BB Bench',type:'Compound',cue:'Heavy tricep compound after chest'},
+      {id:uid(),name:'Skull Crushers',type:'Isolation',cue:'Eccentric focus on last set'},
+      {id:uid(),name:'Rope Pushdown',type:'Isolation',cue:'Burnout finisher — full extension at bottom'},
+      {id:uid(),name:'Parallel Bar Dips',type:'Burnout',cue:'Weighted when bodyweight is easy'},
+    ]},
+    {id:uid(),name:'Wednesday',focus:'Active Recovery',color:'#065f46',exercises:[
+      {id:uid(),name:'20–30 min Walk',type:'Burnout',cue:'Easy pace — not a cardio session'},
+      {id:uid(),name:'Foam Rolling',type:'Burnout',cue:'Quads, lats, thoracic spine, hamstrings'},
+      {id:uid(),name:'Mobility Circuit',type:'Burnout',cue:'Shoulder dislocates, hip circles, leg swings'},
+    ]},
+    {id:uid(),name:'Thursday',focus:'Pull A + Hamstrings',color:'#1e40af',exercises:[
+      {id:uid(),name:'Deadlift (Conventional)',type:'Compound',cue:'Anchor of session — #1 fav compound'},
+      {id:uid(),name:'Snatch RDL',type:'Compound',cue:'#1 fav — bridges back and ham sections'},
+      {id:uid(),name:'Weighted Pull-Ups',type:'Compound',cue:'Add weight when bodyweight sets exceed 10 reps'},
+      {id:uid(),name:'BB Row',type:'Compound',cue:'Hard back day staple — volume + strength blend'},
+      {id:uid(),name:'Seated Cable Row (CG)',type:'Isolation',cue:''},
+      {id:uid(),name:'Tripod Row (DB)',type:'Isolation',cue:'Lat emphasis — elbow flared back'},
+      {id:uid(),name:'CG Lat Iso Pulldown',type:'Isolation',cue:'TTUT — 2 hands down, 1 hand eccentric'},
+      {id:uid(),name:'Romanian DL',type:'Compound',cue:'#1 fav — slow lower, full stretch at bottom'},
+      {id:uid(),name:'Bulgarian Split Squat (Ham)',type:'Compound',cue:'Posterior-forward lean — heel-elevated'},
+      {id:uid(),name:'SL Romanian DL',type:'Isolation',cue:'Unilateral balance and posterior chain'},
+      {id:uid(),name:'Standing Ham Curl',type:'Isolation',cue:'Finisher — legs pre-fatigued from RDL work'},
+    ]},
+    {id:uid(),name:'Friday',focus:'Push B',color:'#6d28d9',exercises:[
+      {id:uid(),name:'Leaning Lateral Raise',type:'Burnout',cue:'Pre-workout prime — cable or DB'},
+      {id:uid(),name:'Cable Face Pull',type:'Burnout',cue:'External rotation primer — shoulder health'},
+      {id:uid(),name:'SA DB Press (Military)',type:'Compound',cue:'#1 fav shoulder — strength first'},
+      {id:uid(),name:'Incline DB Press',type:'Compound',cue:'Upper chest — higher rep, volume focus'},
+      {id:uid(),name:'SA Incline DB Bench',type:'Compound',cue:'Unilateral — full pec stretch at bottom'},
+      {id:uid(),name:'Incline BB Press',type:'Compound',cue:'Upper chest strength finisher'},
+      {id:uid(),name:'CS Supported Lateral Raise',type:'Isolation',cue:'Chest-supported — removes cheat'},
+      {id:uid(),name:'Seated Lateral Raise',type:'Isolation',cue:'Progressive load across sets'},
+      {id:uid(),name:'Rope Pushdown',type:'Isolation',cue:'Eccentric on amrap set'},
+      {id:uid(),name:'SA Cable Pushdown',type:'Isolation',cue:'Unilateral — addresses side imbalance'},
+      {id:uid(),name:'Parallel Bar Dips',type:'Burnout',cue:'Session finisher — weighted if able'},
+    ]},
+    {id:uid(),name:'Saturday',focus:'Pull B',color:'#065f46',exercises:[
+      {id:uid(),name:'WG Lat Pulldown',type:'Compound',cue:'Wide grip for lat width'},
+      {id:uid(),name:'Rope Lat Pulldown',type:'Isolation',cue:'Tension through full extension'},
+      {id:uid(),name:'Pull-Ups',type:'Compound',cue:'Volume focus — not weighted here'},
+      {id:uid(),name:'CS Shrug',type:'Isolation',cue:'Chest-supported — no lower back'},
+      {id:uid(),name:'RD Fly (Rear Delt)',type:'Isolation',cue:'Cable or DB — essential rear delt volume'},
+      {id:uid(),name:'Cable Face Pull',type:'Isolation',cue:'Rear delt + external rotator health'},
+      {id:uid(),name:'Spider Row',type:'Isolation',cue:'Prone incline DB — mid back + rear delt'},
+      {id:uid(),name:'Cable Upright Row',type:'Burnout',cue:'Rear/lateral delt burnout finisher'},
+      {id:uid(),name:'Incline DB Curl',type:'Isolation',cue:'Full stretch at bottom — TTUT for biceps'},
+      {id:uid(),name:'Hammer Curl (Alternating)',type:'Isolation',cue:'Brachialis — adds arm thickness'},
+      {id:uid(),name:'WG EZ Bar Curl (Seated)',type:'Isolation',cue:'Short ROM but high tension'},
+      {id:uid(),name:'Cable Curl',type:'Isolation',cue:'Drop set finisher — full ROM tension'},
+    ]},
+    {id:uid(),name:'Sunday',focus:'Rest',color:'#4b5563',exercises:[
+      {id:uid(),name:'Meal Prep',type:'Burnout',cue:'Batch cook protein, rice, veg'},
+      {id:uid(),name:'Weekly Review',type:'Burnout',cue:'Check PR Board, note top sets, plan next week'},
+    ]},
+  ]};
+  S.splits=[split];
+  S.activeSplitId=split.id;
+}
+
+// ── TAB ROUTING ───────────────────────────────────────────────────────────────
+let currentTab='train';
+function goTab(name,el){
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  currentTab=name;
+  render();
+}
+function render(){
+  if(currentTab==='train')renderTrain();
+  else if(currentTab==='program')renderProgram();
+  else if(currentTab==='prs')renderPRs();
+  else if(currentTab==='history')renderHistory();
+  else if(currentTab==='progress')renderProgress();
+  updateHeader();
+}
+function updateHeader(){
+  const sp=getActiveSplit();
+  document.getElementById('hdr-sub').textContent=sp?`Active: ${sp.name}`:'No split selected';
+}
+
+// ── TRAIN TAB ─────────────────────────────────────────────────────────────────
+let timerInterval=null;
+function renderTrain(){
+  const el=document.getElementById('main-content');
+  if(S.session){renderActiveSession(el);return;}
+  const split=getActiveSplit();
+  if(!split){el.innerHTML=`<div class="empty-state"><div class="ico">📋</div><p>Create a split in the Program tab first.</p></div>`;return;}
+  el.innerHTML=`
+    <div class="session-start">
+      <h2>Start a Session</h2>
+      <p>Select today's workout from <b>${split.name}</b></p>
+    </div>
+    <div class="day-picker" id="day-picker">
+      ${split.days.map(d=>`
+        <button class="day-card" data-id="${d.id}" onclick="selectDay('${d.id}')">
+          <div class="day-name" style="color:${d.color}">${d.name}</div>
+          <div class="day-focus">${d.focus}</div>
+          <div class="ex-count">${d.exercises.length} exercise${d.exercises.length!==1?'s':''}</div>
+        </button>`).join('')}
+    </div>
+    <div style="height:14px"></div>`;
+}
+
+function selectDay(dayId){
+  document.querySelectorAll('.day-card').forEach(c=>c.classList.toggle('selected',c.dataset.id===dayId));
+  if(document.getElementById('start-btn'))document.getElementById('start-btn').remove();
+  const picker=document.getElementById('day-picker');
+  const btn=document.createElement('button');
+  btn.id='start-btn';
+  btn.className='btn btn-primary btn-full';
+  btn.style.marginTop='12px';
+  btn.textContent='Begin Session';
+  btn.onclick=()=>beginSession(dayId);
+  picker.after(btn);
+}
+
+function beginSession(dayId){
+  const split=getActiveSplit();
+  const day=split.days.find(d=>d.id===dayId);
+  if(!day)return;
+  S.session={
+    id:uid(), splitId:split.id, splitName:split.name,
+    dayId:day.id, dayName:day.name, dayFocus:day.focus, dayColor:day.color,
+    date:today(), startTime:Date.now(),
+    exercises:day.exercises.map(e=>({
+      exerciseId:e.id, exerciseName:e.name, type:e.type, cue:e.cue,
+      sets:[{weight:'',reps:'',done:false}]
+    }))
+  };
+  persist();render();
+}
+
+function renderActiveSession(el){
+  const s=S.session;
+  if(timerInterval)clearInterval(timerInterval);
+  const timerEl=document.createElement('div');
+  timerEl.id='session-timer-display';
+  
+  el.innerHTML=`
+    <div class="session-header">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:${s.dayColor}">${s.dayName} — ${s.dayFocus}</div>
+        <div class="session-timer" id="session-timer">0:00</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="finishSession()">Finish ✓</button>
+    </div>
+    ${s.exercises.map((ex,ei)=>renderExBlock(ex,ei)).join('')}
+    <div style="margin:16px 0">
+      <button class="btn btn-red btn-full" onclick="cancelSession()">Discard Session</button>
+    </div>`;
+
+  timerInterval=setInterval(()=>{
+    const t=document.getElementById('session-timer');
+    if(t)t.textContent=elapsed(s.startTime);
+    else clearInterval(timerInterval);
+  },1000);
+}
+
+function renderExBlock(ex,ei){
+  const prev=getLastSession(ex.exerciseName);
+  const prevStr=prev?prev.sets.filter(s=>s.weight&&s.reps).map(s=>`${s.weight}×${s.reps}`).join(', '):'';
+  const bCls={'Compound':'badge-compound','Isolation':'badge-isolation','Burnout':'badge-burnout'}[ex.type]||'badge-isolation';
+  return`<div class="ex-block" id="ex-${ei}">
+    <div class="ex-block-header">
+      <div style="display:flex;align-items:center;gap:7px">
+        <span class="ex-block-name">${ex.exerciseName}</span>
+        <span class="badge ${bCls}">${ex.type}</span>
+      </div>
+      ${ex.cue?`<div class="ex-block-cue">${ex.cue}</div>`:''}
+    </div>
+    ${prevStr?`<div class="ex-prev">Last: <span>${prevStr}</span></div>`:''}
+    <div class="set-rows" id="sets-${ei}">
+      ${ex.sets.map((s,si)=>renderSetRow(ei,si,s)).join('')}
+    </div>
+    <button class="set-add" onclick="addSet(${ei})">+ Add Set</button>
+  </div>`;
+}
+
+function renderSetRow(ei,si,s){
+  return`<div class="set-row" id="row-${ei}-${si}">
+    <span class="set-num">${si+1}</span>
+    <input class="set-input" type="number" inputmode="decimal" placeholder="lbs"
+      value="${s.weight||''}" onchange="updateSet(${ei},${si},'weight',this.value)" style="width:68px">
+    <span class="set-x">×</span>
+    <input class="set-input" type="number" inputmode="numeric" placeholder="reps"
+      value="${s.reps||''}" onchange="updateSet(${ei},${si},'reps',this.value)" style="width:58px">
+    <div class="set-check${s.done?' done':''}" onclick="toggleDone(${ei},${si})">${s.done?'✓':''}</div>
+    ${si>0?`<button class="btn-icon" onclick="removeSet(${ei},${si})" style="color:#e5e3db">✕</button>`:'<span style="width:28px"></span>'}
+  </div>`;
+}
+
+function updateSet(ei,si,field,val){
+  const v=parseFloat(val)||0;
+  S.session.exercises[ei].sets[si][field]=v||'';
+  persist();
+}
+function toggleDone(ei,si){
+  const s=S.session.exercises[ei].sets[si];
+  s.done=!s.done;
+  persist();
+  const row=document.getElementById(`row-${ei}-${si}`);
+  if(row){
+    const chk=row.querySelector('.set-check');
+    chk.classList.toggle('done',s.done);
+    chk.textContent=s.done?'✓':'';
+  }
+}
+function addSet(ei){
+  S.session.exercises[ei].sets.push({weight:'',reps:'',done:false});
+  persist();
+  const container=document.getElementById(`sets-${ei}`);
+  const si=S.session.exercises[ei].sets.length-1;
+  const s=S.session.exercises[ei].sets[si];
+  container.insertAdjacentHTML('beforeend',renderSetRow(ei,si,s));
+}
+function removeSet(ei,si){
+  if(S.session.exercises[ei].sets.length<=1)return;
+  S.session.exercises[ei].sets.splice(si,1);
+  persist();
+  document.getElementById(`sets-${ei}`).innerHTML=
+    S.session.exercises[ei].sets.map((s,i)=>renderSetRow(ei,i,s)).join('');
+}
+
+function finishSession(){
+  if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
+  const s=S.session;
+  s.endTime=Date.now();
+  s.duration=Math.round((s.endTime-s.startTime)/60000);
+  // Only keep exercises that have at least one set with weight+reps
+  s.exercises=s.exercises.map(ex=>({
+    ...ex,sets:ex.sets.filter(s=>s.weight&&s.reps)
+  })).filter(ex=>ex.sets.length>0||ex.type!=='Burnout');
+  S.logs.push(s);
+  S.session=null;
+  persist();
+  currentTab='history';
+  document.querySelectorAll('.nav button')[3].click();
+}
+function cancelSession(){
+  if(!confirm('Discard this session? All logged sets will be lost.'))return;
+  if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
+  S.session=null;
+  persist();render();
+}
+
+// ── PROGRAM TAB ───────────────────────────────────────────────────────────────
+let programView='splits'; // 'splits' | 'days' | 'exercises'
+let editingSplitId=null;
+let editingDayId=null;
+
+function renderProgram(){
+  const el=document.getElementById('main-content');
+  if(programView==='exercises'&&editingDayId) renderExerciseEditor(el);
+  else if(programView==='days'&&editingSplitId) renderDayEditor(el);
+  else renderSplitList(el);
+}
+
+function renderSplitList(el){
+  el.innerHTML=`
+    <div class="row" style="margin-bottom:12px">
+      <span style="font-size:15px;font-weight:600;flex:1">Splits</span>
+      <button class="btn btn-primary btn-sm" onclick="openSplitModal()">+ New Split</button>
+    </div>
+    ${S.splits.length?S.splits.map(sp=>`
+      <div class="split-card${sp.id===S.activeSplitId?' active-split':''}">
+        <div>
+          <div style="font-weight:600">${sp.name}${sp.id===S.activeSplitId?' <span class="tag">Active</span>':''}</div>
+          <div class="text-muted">${sp.days.length} days · Created ${fmtDate(sp.createdAt)}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          ${sp.id!==S.activeSplitId?`<button class="btn btn-ghost btn-xs" onclick="setActiveSplit('${sp.id}')">Set Active</button>`:''}
+          <button class="btn btn-ghost btn-xs" onclick="editSplit('${sp.id}')">Edit</button>
+        </div>
+      </div>`).join('')
+    :`<div class="empty-state"><div class="ico">📋</div><p>No splits yet. Create one above.</p></div>`}`;
+}
+
+function setActiveSplit(id){S.activeSplitId=id;persist();render();}
+
+function openSplitModal(existing){
+  const isEdit=!!existing;
+  document.getElementById('modal-inner').innerHTML=`
+    <div class="modal-title">${isEdit?'Edit Split':'New Split'}</div>
+    <div class="form-row"><label class="form-label">Split name</label>
+      <input id="m-split-name" placeholder="e.g. Bulk Split, Cut Split" value="${isEdit?existing.name:''}"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      ${isEdit?`<button class="btn btn-red grow" onclick="deleteSplit('${existing.id}')">Delete Split</button>`:''}
+      <button class="btn btn-primary grow" onclick="saveSplit(${isEdit?`'${existing.id}'`:'null'})">${isEdit?'Save':'Create'}</button>
+    </div>`;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function saveSplit(id){
+  const name=document.getElementById('m-split-name').value.trim();
+  if(!name)return;
+  if(id){
+    const sp=S.splits.find(x=>x.id===id);
+    if(sp)sp.name=name;
+  } else {
+    const sp={id:uid(),name,createdAt:today(),days:[]};
+    S.splits.push(sp);
+    if(!S.activeSplitId)S.activeSplitId=sp.id;
+  }
+  persist();closeModal();render();
+}
+function deleteSplit(id){
+  if(!confirm('Delete this split? All days and exercises in it will be removed. Logged sessions are kept.'))return;
+  S.splits=S.splits.filter(x=>x.id!==id);
+  if(S.activeSplitId===id)S.activeSplitId=S.splits[0]?.id||null;
+  persist();closeModal();render();
+}
+function editSplit(id){editingSplitId=id;programView='days';render();}
+
+function renderDayEditor(el){
+  const sp=S.splits.find(x=>x.id===editingSplitId);
+  if(!sp){programView='splits';render();return;}
+  el.innerHTML=`
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn btn-ghost btn-sm" onclick="programView='splits';render()">← Splits</button>
+      <span style="font-size:15px;font-weight:600;flex:1;text-align:center">${sp.name}</span>
+      <button class="btn btn-primary btn-sm" onclick="openDayModal('${sp.id}')">+ Day</button>
+    </div>
+    ${sp.days.length?sp.days.map(d=>`
+      <div class="split-card">
+        <div>
+          <div style="font-weight:600;color:${d.color}">${d.name}</div>
+          <div class="text-muted">${d.focus} · ${d.exercises.length} exercises</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-xs" onclick="openDayModal('${sp.id}','${d.id}')">Edit</button>
+          <button class="btn btn-ghost btn-xs" onclick="editDay('${sp.id}','${d.id}')">Exercises →</button>
+        </div>
+      </div>`).join('')
+    :`<div class="empty-state"><div class="ico">📅</div><p>No days yet. Add one above.</p></div>`}`;
+}
+function openDayModal(splitId, dayId){
+  const sp=S.splits.find(x=>x.id===splitId);
+  const day=dayId?sp.days.find(d=>d.id===dayId):null;
+  const colors=['#1e40af','#6d28d9','#065f46','#dc2626','#d97706','#4b5563'];
+  document.getElementById('modal-inner').innerHTML=`
+    <div class="modal-title">${day?'Edit Day':'Add Day'}</div>
+    <div class="form-row"><label class="form-label">Day name</label>
+      <input id="m-day-name" placeholder="e.g. Monday, Day 1" value="${day?day.name:''}"></div>
+    <div class="form-row"><label class="form-label">Focus / description</label>
+      <input id="m-day-focus" placeholder="e.g. Quads, Upper Body, Pull" value="${day?day.focus:''}"></div>
+    <div class="form-row"><label class="form-label">Color</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        ${colors.map(c=>`<div onclick="document.querySelectorAll('.clr-swatch').forEach(x=>x.classList.remove('clr-sel'));this.classList.add('clr-sel');document.getElementById('m-day-color').value='${c}'" 
+          class="clr-swatch${day&&day.color===c?' clr-sel':(!day&&c===colors[0]?' clr-sel':'')}" 
+          style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${(day&&day.color===c)||((!day)&&c===colors[0])?'#1c1c1a':'transparent'}"></div>`).join('')}
+        <input type="hidden" id="m-day-color" value="${day?day.color:colors[0]}">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      ${day?`<button class="btn btn-red grow" onclick="deleteDay('${splitId}','${dayId}')">Delete</button>`:''}
+      <button class="btn btn-primary grow" onclick="saveDay('${splitId}',${day?`'${dayId}'`:'null'})">${day?'Save':'Add'}</button>
+    </div>`;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function saveDay(splitId,dayId){
+  const sp=S.splits.find(x=>x.id===splitId);
+  const name=document.getElementById('m-day-name').value.trim();
+  const focus=document.getElementById('m-day-focus').value.trim();
+  const color=document.getElementById('m-day-color').value;
+  if(!name)return;
+  if(dayId){const d=sp.days.find(x=>x.id===dayId);if(d){d.name=name;d.focus=focus;d.color=color;}}
+  else sp.days.push({id:uid(),name,focus,color,exercises:[]});
+  persist();closeModal();render();
+}
+function deleteDay(splitId,dayId){
+  if(!confirm('Delete this day and all its exercises?'))return;
+  const sp=S.splits.find(x=>x.id===splitId);
+  sp.days=sp.days.filter(d=>d.id!==dayId);
+  persist();closeModal();render();
+}
+function editDay(splitId,dayId){editingSplitId=splitId;editingDayId=dayId;programView='exercises';render();}
+
+function renderExerciseEditor(el){
+  const sp=S.splits.find(x=>x.id===editingSplitId);
+  const day=sp?.days.find(d=>d.id===editingDayId);
+  if(!sp||!day){programView='days';render();return;}
+  el.innerHTML=`
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn btn-ghost btn-sm" onclick="programView='days';render()">← ${sp.name}</button>
+      <span style="font-size:14px;font-weight:600;flex:1;text-align:center;color:${day.color}">${day.name}</span>
+      <button class="btn btn-primary btn-sm" onclick="openExModal('${editingSplitId}','${editingDayId}')">+ Add</button>
+    </div>
+    <div class="panel" style="padding:8px 14px">
+      ${day.exercises.length?day.exercises.map((ex,i)=>`
+        <div class="ex-list-item">
+          <span class="ex-grip">⠿</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:${ex.type==='Compound'?'600':'400'}">${ex.name}</div>
+            <div style="font-size:11px;color:#9ca3af">${ex.type}${ex.cue?' · '+ex.cue.slice(0,40)+(ex.cue.length>40?'…':''):''}</div>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-icon" onclick="moveEx('${editingSplitId}','${editingDayId}',${i},-1)" ${i===0?'style="opacity:.3;cursor:default"':''}>↑</button>
+            <button class="btn-icon" onclick="moveEx('${editingSplitId}','${editingDayId}',${i},1)" ${i===day.exercises.length-1?'style="opacity:.3;cursor:default"':''}>↓</button>
+            <button class="btn-icon" onclick="openExModal('${editingSplitId}','${editingDayId}','${ex.id}')">✏️</button>
+          </div>
+        </div>`).join('')
+      :`<div class="empty-state" style="padding:20px"><p>No exercises yet. Add one above.</p></div>`}
+    </div>`;
+}
+function moveEx(splitId,dayId,idx,dir){
+  const sp=S.splits.find(x=>x.id===splitId);
+  const day=sp.days.find(d=>d.id===dayId);
+  const ni=idx+dir;
+  if(ni<0||ni>=day.exercises.length)return;
+  [day.exercises[idx],day.exercises[ni]]=[day.exercises[ni],day.exercises[idx]];
+  persist();render();
+}
+function openExModal(splitId,dayId,exId){
+  const sp=S.splits.find(x=>x.id===splitId);
+  const day=sp.days.find(d=>d.id===dayId);
+  const ex=exId?day.exercises.find(e=>e.id===exId):null;
+  document.getElementById('modal-inner').innerHTML=`
+    <div class="modal-title">${ex?'Edit Exercise':'Add Exercise'}</div>
+    <div class="form-row"><label class="form-label">Exercise name</label>
+      <input id="m-ex-name" placeholder="e.g. BB Back Squat" value="${ex?ex.name:''}"></div>
+    <div class="form-row"><label class="form-label">Type</label>
+      <select id="m-ex-type">
+        <option value="Compound"${ex?.type==='Compound'?' selected':''}>Compound</option>
+        <option value="Isolation"${ex?.type==='Isolation'?' selected':''}>Isolation</option>
+        <option value="Burnout"${ex?.type==='Burnout'?' selected':''}>Burnout</option>
+      </select></div>
+    <div class="form-row"><label class="form-label">Coaching cue (optional)</label>
+      <input id="m-ex-cue" placeholder="e.g. Full ROM, slow eccentric" value="${ex?ex.cue:''}"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      ${ex?`<button class="btn btn-red grow" onclick="deleteEx('${splitId}','${dayId}','${exId}')">Delete</button>`:''}
+      <button class="btn btn-primary grow" onclick="saveEx('${splitId}','${dayId}',${ex?`'${exId}'`:'null'})">${ex?'Save':'Add'}</button>
+    </div>`;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function saveEx(splitId,dayId,exId){
+  const sp=S.splits.find(x=>x.id===splitId);
+  const day=sp.days.find(d=>d.id===dayId);
+  const name=document.getElementById('m-ex-name').value.trim();
+  const type=document.getElementById('m-ex-type').value;
+  const cue=document.getElementById('m-ex-cue').value.trim();
+  if(!name)return;
+  if(exId){const ex=day.exercises.find(e=>e.id===exId);if(ex){ex.name=name;ex.type=type;ex.cue=cue;}}
+  else day.exercises.push({id:uid(),name,type,cue});
+  persist();closeModal();render();
+}
+function deleteEx(splitId,dayId,exId){
+  const sp=S.splits.find(x=>x.id===splitId);
+  const day=sp.days.find(d=>d.id===dayId);
+  day.exercises=day.exercises.filter(e=>e.id!==exId);
+  persist();closeModal();render();
+}
+
+// ── PR BOARD TAB ──────────────────────────────────────────────────────────────
+let prFilter='all';
+function renderPRs(){
+  const el=document.getElementById('main-content');
+  const split=getActiveSplit();
+  // Gather all unique exercise names from active split + logs
+  const exNames=new Set();
+  if(split)split.days.forEach(d=>d.exercises.forEach(e=>{if(e.type!=='Burnout')exNames.add(e.name);}));
+  S.logs.forEach(l=>l.exercises.forEach(e=>{if(e.sets?.length)exNames.add(e.exerciseName);}));
+  const allPRs=[...exNames].map(name=>({name,...getPR(name)})).filter(p=>p.bestWt>0);
+  allPRs.sort((a,b)=>a.name.localeCompare(b.name));
+
+  if(!allPRs.length){
+    el.innerHTML=`<div class="empty-state"><div class="ico">🏆</div><p>No PRs yet. Log some sessions first and your records will appear here automatically.</p></div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div class="row" style="margin-bottom:12px">
+      <span style="font-size:15px;font-weight:600">${allPRs.length} Personal Records</span>
+    </div>
+    <div class="panel" style="padding:0;overflow:hidden">
+      <table class="pr-table" style="width:100%">
+        <thead><tr>
+          <th>Exercise</th>
+          <th style="text-align:right">Best Wt</th>
+          <th style="text-align:right">Vol</th>
+          <th style="text-align:right">1RM</th>
+        </tr></thead>
+        <tbody>
+          ${allPRs.map(p=>`<tr onclick="goProgressForEx(${JSON.stringify(p.name)})" style="cursor:pointer">
+            <td style="padding:9px 10px">
+              <div style="font-size:13px;font-weight:500">${p.name}</div>
+              <div class="pr-date">${p.sessions} session${p.sessions!==1?'s':''}${p.lastDate?' · '+fmtDate(p.lastDate):''}</div>
+            </td>
+            <td style="text-align:right;padding:9px 8px"><span class="pr-wt">${p.bestWt}</span><span class="text-muted"> lbs</span></td>
+            <td style="text-align:right;padding:9px 8px"><span class="pr-vol">${p.bestVol.toLocaleString()}</span></td>
+            <td style="text-align:right;padding:9px 10px"><span class="pr-1rm">${p.best1rm}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="text-muted" style="text-align:center;margin-top:8px">Tap any row to see progress chart</div>`;
+}
+function goProgressForEx(name){
+  document.querySelectorAll('.nav button')[4].click();
+  setTimeout(()=>{const sel=document.getElementById('prog-ex-sel');if(sel){sel.value=name;renderProgressChart();}},50);
+}
+
+// ── HISTORY TAB ───────────────────────────────────────────────────────────────
+function renderHistory(){
+  const el=document.getElementById('main-content');
+  const logs=[...S.logs].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!logs.length){el.innerHTML=`<div class="empty-state"><div class="ico">📅</div><p>No sessions logged yet.<br>Hit Train to start your first one.</p></div>`;return;}
+  el.innerHTML=`
+    <div class="row" style="margin-bottom:12px">
+      <span style="font-size:15px;font-weight:600">${logs.length} Sessions</span>
+    </div>
+    ${logs.map(log=>{
+      const totalSets=log.exercises.reduce((s,e)=>s+(e.sets?.length||0),0);
+      const topW=Math.max(0,...log.exercises.flatMap(e=>e.sets?.map(s=>s.weight||0)||[0]));
+      return`<div class="session-hist">
+        <div class="session-hist-hdr" onclick="toggleHist('${log.id}')">
+          <div>
+            <div style="font-weight:600">${log.dayName} <span style="color:#9ca3af;font-weight:400">— ${log.dayFocus||''}</span></div>
+            <div class="text-muted">${fmtDate(log.date)}${log.duration?' · '+log.duration+' min':''} · ${totalSets} sets</div>
+          </div>
+          <div style="color:#9ca3af">▾</div>
+        </div>
+        <div class="session-hist-body" id="hist-${log.id}">
+          ${log.exercises.map(ex=>`
+            <div style="margin-bottom:8px">
+              <div style="font-size:13px;font-weight:500;margin-bottom:3px">${ex.exerciseName}</div>
+              <div style="font-size:12px;color:#6b7280">${ex.sets?.filter(s=>s.weight&&s.reps).map((s,i)=>`Set ${i+1}: ${s.weight} × ${s.reps}`).join(' · ')||'No sets logged'}</div>
+            </div>`).join('')}
+          <div style="margin-top:10px">
+            <button class="btn btn-ghost btn-xs" onclick="deleteLog('${log.id}')" style="color:#dc2626;border-color:#fca5a5">Delete Session</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+function toggleHist(id){const b=document.getElementById('hist-'+id);if(b)b.classList.toggle('open');}
+function deleteLog(id){
+  if(!confirm('Delete this session log?'))return;
+  S.logs=S.logs.filter(l=>l.id!==id);
+  persist();render();
+}
+
+// ── PROGRESS TAB ──────────────────────────────────────────────────────────────
+let progressExName=null;
+function renderProgress(){
+  const el=document.getElementById('main-content');
+  // Gather all exercise names that have logs
+  const exNames=new Set();
+  S.logs.forEach(l=>l.exercises.forEach(e=>{if(e.sets?.some(s=>s.weight&&s.reps))exNames.add(e.exerciseName);}));
+  const names=[...exNames].sort();
+  if(!names.length){el.innerHTML=`<div class="empty-state"><div class="ico">📈</div><p>No logged sets yet.<br>Complete a session to see progress charts.</p></div>`;return;}
+  if(!progressExName||!exNames.has(progressExName))progressExName=names[0];
+  el.innerHTML=`
+    <div class="form-row prog-ex-select" style="margin-bottom:14px">
+      <label class="form-label">Select exercise</label>
+      <select id="prog-ex-sel" onchange="progressExName=this.value;renderProgressChart()">
+        ${names.map(n=>`<option value="${n}"${n===progressExName?' selected':''}>${n}</option>`).join('')}
+      </select>
+    </div>
+    <div id="prog-charts"></div>`;
+  renderProgressChart();
+}
+function renderProgressChart(){
+  const name=document.getElementById('prog-ex-sel')?.value;
+  if(!name)return;
+  progressExName=name;
+  const pts=getExerciseHistory(name);
+  const container=document.getElementById('prog-charts');
+  if(!pts.length){container.innerHTML=`<div class="empty-state"><p>No data for this exercise yet.</p></div>`;return;}
+  const pr=getPR(name);
+  container.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="panel" style="flex:1;min-width:90px;padding:10px 12px;margin:0">
+        <div class="text-muted">Best Weight</div>
+        <div style="font-size:20px;font-weight:700;color:#1e40af">${pr.bestWt} <span style="font-size:13px;font-weight:400">lbs</span></div>
+      </div>
+      <div class="panel" style="flex:1;min-width:90px;padding:10px 12px;margin:0">
+        <div class="text-muted">Est 1RM</div>
+        <div style="font-size:20px;font-weight:700;color:#7c3aed">${pr.best1rm} <span style="font-size:13px;font-weight:400">lbs</span></div>
+      </div>
+      <div class="panel" style="flex:1;min-width:90px;padding:10px 12px;margin:0">
+        <div class="text-muted">Sessions</div>
+        <div style="font-size:20px;font-weight:700;color:#374151">${pr.sessions}</div>
+      </div>
+    </div>
+    ${svgChart(pts,'topW','Top Set Weight (lbs)','#1e40af')}
+    ${svgChart(pts,'vol','Session Volume (lbs)','#16a34a')}
+    ${svgChart(pts,'top1rm','Estimated 1RM (lbs)','#7c3aed')}`;
+}
+
+function svgChart(pts,key,label,color){
+  if(pts.length<2)return'';
+  const vals=pts.map(p=>p[key]);
+  const minV=Math.min(...vals), maxV=Math.max(...vals);
+  const range=maxV-minV||1;
+  const W=320,H=100,PAD=8;
+  const px=i=>(i/(pts.length-1))*(W-2*PAD)+PAD;
+  const py=v=>H-PAD-((v-minV)/range)*(H-2*PAD);
+  const points=pts.map((p,i)=>`${px(i)},${py(p[key])}`).join(' ');
+  const fmtVal=v=>key==='vol'?v.toLocaleString():v;
+  const xLabels=[0,pts.length-1].map(i=>`<text x="${px(i)}" y="${H+16}" text-anchor="${i===0?'start':'end'}" font-size="9" fill="#9ca3af">${fmtDate(pts[i].date)}</text>`).join('');
+  return`<div class="prog-chart">
+    <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">${label}</div>
+    <svg viewBox="0 0 ${W} ${H+24}" width="100%" style="display:block;overflow:visible">
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+      ${pts.map((p,i)=>`<circle cx="${px(i)}" cy="${py(p[key])}" r="${i===pts.length-1?4:2.5}" fill="${i===pts.length-1?color:'#d1d5db'}"/>
+        ${i===pts.length-1?`<text x="${px(i)}" y="${py(p[key])-8}" text-anchor="middle" font-size="9" fill="${color}" font-weight="600">${fmtVal(p[key])}</text>`:''}
+      `).join('')}
+      ${xLabels}
+    </svg>
+  </div>`;
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function closeModal(e){
+  if(e&&e.target!==document.getElementById('modal-overlay'))return;
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+function openSplitModal(existing){
+  const isEdit=!!existing;
+  document.getElementById('modal-inner').innerHTML=`
+    <div class="modal-title">${isEdit?'Edit Split':'New Split'}</div>
+    <div class="form-row"><label class="form-label">Split name</label>
+      <input id="m-split-name" placeholder="e.g. Bulk Split, Cut Split" value="${isEdit?existing.name:''}"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      ${isEdit?`<button class="btn btn-red grow" onclick="deleteSplit('${isEdit?existing.id:''}')">Delete Split</button>`:''}
+      <button class="btn btn-primary grow" onclick="saveSplit(${isEdit?`'${existing.id}'`:'null'})">${isEdit?'Save':'Create'}</button>
+    </div>`;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadState().then(()=>render());
+</script>
+</body>
+</html>

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ze Cookbook · Meal Builder</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-size:15px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;background:#f5f4f0;color:#1c1c1a;line-height:1.5}
+button{cursor:pointer;font:inherit;border:none;background:none}
+input,select,textarea{font:inherit}
+a{color:inherit}
+
+.app{display:flex;flex-direction:column;min-height:100vh}
+.header{background:#1a2e1a;color:#e8f5e9;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+.header h1{font-size:16px;font-weight:600;letter-spacing:-.2px}
+.header-meta{font-size:12px;opacity:.6;font-variant-numeric:tabular-nums;margin-top:2px}
+.header-cal{font-size:13px;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.1);padding:5px 10px;border-radius:6px;white-space:nowrap}
+.nav{display:flex;background:#fff;border-bottom:1px solid #e5e3db;overflow-x:auto;padding:0 20px;gap:2px;flex-shrink:0}
+.nav::-webkit-scrollbar{height:0}
+.nav button{padding:10px 14px;font-size:13px;color:#6b7280;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px;transition:color .15s}
+.nav button.active{color:#1a2e1a;border-bottom-color:#1a2e1a;font-weight:500}
+.nav button:hover:not(.active){color:#374151}
+.content{flex:1;padding:20px;max-width:1100px;margin:0 auto;width:100%}
+.content-inner{display:none}
+.content-inner.show{display:block}
+
+/* CARDS */
+.card{background:#fff;border:1px solid #e5e3db;border-radius:10px;padding:16px}
+.section-title{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+
+/* MACRO PILLS */
+.macro-row{display:flex;gap:8px;margin-bottom:14px}
+.macro-pill{flex:1;min-width:60px;background:#f5f4f0;border-radius:8px;padding:10px 8px;text-align:center}
+.macro-pill .val{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.macro-pill .lbl{font-size:11px;color:#6b7280;margin-top:1px}
+.macro-pill.prot .val{color:#7c3aed}
+.macro-pill.carb .val{color:#d97706}
+.macro-pill.fat .val{color:#dc2626}
+.macro-pill.cal .val{color:#16a34a}
+
+/* PROGRESS */
+.prog-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.prog-label{font-size:12px;width:60px;color:#6b7280;flex-shrink:0}
+.prog-bar{flex:1;height:5px;background:#f0efeb;border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.prog-fill.prot{background:#7c3aed}
+.prog-fill.carb{background:#d97706}
+.prog-fill.fat{background:#dc2626}
+.prog-fill.cal{background:#16a34a}
+.prog-val{font-size:11px;min-width:56px;text-align:right;font-variant-numeric:tabular-nums;color:#374151}
+
+/* BUILDER LAYOUT */
+.builder-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:680px){.builder-grid{grid-template-columns:1fr}}
+
+/* INGREDIENT LIST */
+.ing-search{width:100%;padding:8px 12px;border:1px solid #e5e3db;border-radius:8px;font-size:13px;background:#fff;outline:none;transition:border-color .15s}
+.ing-search:focus{border-color:#1a2e1a}
+.cat-filter{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0 8px}
+.cat-btn{padding:3px 9px;font-size:11px;border:1px solid #e5e3db;border-radius:20px;color:#6b7280;background:#fff;transition:all .15s}
+.cat-btn.active{background:#1a2e1a;color:#e8f5e9;border-color:#1a2e1a}
+.ing-list{max-height:380px;overflow-y:auto;border:1px solid #e5e3db;border-radius:8px}
+.ing-list::-webkit-scrollbar{width:4px}
+.ing-list::-webkit-scrollbar-thumb{background:#e5e3db;border-radius:2px}
+.ing-item{display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #f5f4f0;gap:8px;transition:background .1s}
+.ing-item:last-child{border-bottom:none}
+.ing-item:hover{background:#fafaf8}
+.ing-item.excluded{opacity:.35}
+.ing-name{font-size:13px;font-weight:500;flex:1;line-height:1.3}
+.ing-sub{font-size:11px;color:#9ca3af;line-height:1.2}
+.ing-macros{font-size:11px;color:#6b7280;white-space:nowrap;text-align:right}
+.fav-star{color:#d97706;font-size:10px;margin-right:3px}
+.add-btn{width:26px;height:26px;border-radius:50%;background:#f0efeb;color:#374151;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;line-height:1}
+.add-btn:hover{background:#1a2e1a;color:#e8f5e9}
+.in-meal-badge{font-size:10px;color:#16a34a;font-weight:500;margin-left:4px}
+
+/* MEAL ITEMS */
+.meal-item{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #f5f4f0}
+.meal-item:last-child{border-bottom:none}
+.meal-name{flex:1;font-size:13px;font-weight:500}
+.qty-input{width:58px;padding:4px 6px;border:1px solid #e5e3db;border-radius:6px;font-size:12px;text-align:center;outline:none}
+.qty-input:focus{border-color:#1a2e1a}
+.qty-unit{font-size:11px;color:#9ca3af;white-space:nowrap}
+.meal-item-macros{font-size:11px;color:#6b7280;min-width:78px;text-align:right}
+.rm-btn{color:#dc2626;font-size:16px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;opacity:.5;flex-shrink:0}
+.rm-btn:hover{opacity:1;background:#fef2f2}
+
+/* ALERTS */
+.alert{padding:9px 12px;border-radius:8px;font-size:12px;margin-bottom:7px;display:flex;gap:8px;align-items:flex-start;line-height:1.4}
+.alert.warn{background:#fef9c3;border:1px solid #fde047;color:#713f12}
+.alert.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a5f}
+.alert.success{background:#f0fdf4;border:1px solid #86efac;color:#14532d}
+.alert.danger{background:#fef2f2;border:1px solid #fca5a5;color:#7f1d1d}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap}
+.btn-primary{background:#1a2e1a;color:#e8f5e9}
+.btn-primary:hover{background:#243d24}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{border:1px solid #e5e3db;color:#374151;background:#fff}
+.btn-ghost:hover{background:#f5f4f0}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-danger{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5}
+.btn-danger:hover{background:#fee2e2}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid #f0efeb;margin:12px 0}
+
+/* SPINNER */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* EMPTY */
+.empty{text-align:center;padding:32px 16px;color:#9ca3af;font-size:13px}
+
+/* SAVED CARDS */
+.saved-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.saved-card{background:#fff;border:1px solid #e5e3db;border-radius:10px;padding:14px;transition:all .15s}
+.saved-card:hover{border-color:#1a2e1a;box-shadow:0 2px 8px rgba(26,46,26,.06)}
+.saved-card h4{font-size:14px;font-weight:600;margin-bottom:4px}
+.saved-card .saved-meta{font-size:11px;color:#9ca3af;margin-bottom:8px}
+.saved-macros{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:10px}
+
+/* PREF TAGS */
+.tag{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;font-size:12px}
+.tag-remove{background:none;border:none;cursor:pointer;font-size:12px;opacity:.6;line-height:1;padding:0 2px}
+.tag-remove:hover{opacity:1}
+.tag-list{display:flex;flex-wrap:wrap;gap:5px;min-height:26px;margin-top:8px}
+.pref-add-row{display:flex;gap:8px;margin-top:8px}
+.pref-select{flex:1;padding:7px 10px;border:1px solid #e5e3db;border-radius:6px;font-size:13px;background:#fff;outline:none}
+
+/* AI RESULT */
+.ai-result-card{background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;margin-top:14px}
+.ai-result-card h3{font-size:15px;font-weight:600;color:#14532d;margin-bottom:6px}
+.ai-item-row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid #d1fae5;font-size:13px;gap:8px}
+.ai-item-row:last-child{border-bottom:none}
+.ai-note{font-size:11px;color:#4b7a5c;margin-top:2px}
+
+/* MICROS */
+.micro-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f5f4f0}
+.micro-row:last-child{border-bottom:none}
+.micro-name{min-width:100px;font-size:13px}
+.micro-bar{flex:1;height:5px;background:#f0efeb;border-radius:3px;overflow:hidden}
+.micro-bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.micro-val{font-size:13px;font-variant-numeric:tabular-nums;font-weight:500;min-width:60px;text-align:right}
+.micro-pct{font-size:11px;color:#9ca3af;min-width:52px;text-align:right}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:500px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1>Ze Cookbook</h1>
+      <div class="header-meta">Meal Builder · Macro Tracker · AI Suggest</div>
+    </div>
+    <div id="header-cal" class="header-cal">0 / 3100 cal</div>
+  </div>
+  <nav class="nav">
+    <button class="active" onclick="setTab('builder',this)">🥗 Builder</button>
+    <button onclick="setTab('ai',this)">✨ AI Suggest</button>
+    <button onclick="setTab('saved',this)">💾 Saved</button>
+    <button onclick="setTab('prefs',this)">⚙️ Preferences</button>
+    <button onclick="setTab('micros',this)">📊 Micros</button>
+  </nav>
+  <div class="content">
+    <div id="tab-builder" class="content-inner show"></div>
+    <div id="tab-ai" class="content-inner"></div>
+    <div id="tab-saved" class="content-inner"></div>
+    <div id="tab-prefs" class="content-inner"></div>
+    <div id="tab-micros" class="content-inner"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// INGREDIENT DATABASE
+// ─────────────────────────────────────────────
+const DB = [
+  // Proteins
+  {id:'chkbrst',name:'Chicken Breast',cat:'Protein',serving:'100g',p:31,c:0,f:3.6,cal:165,fiber:0,sodium:74,potassium:256,vitC:0,iron:0.9,calcium:15,tags:['high-protein','lean']},
+  {id:'gndbeef',name:'Ground Beef 93% lean',cat:'Protein',serving:'100g',p:26,c:0,f:7,cal:172,fiber:0,sodium:75,potassium:318,vitC:0,iron:2.7,calcium:14,tags:['high-protein']},
+  {id:'tuna',name:'Tuna (canned)',cat:'Protein',serving:'85g / 3oz',p:20,c:0,f:0.5,cal:90,fiber:0,sodium:290,potassium:200,vitC:0,iron:0.8,calcium:13,tags:['high-protein','lean','budget']},
+  {id:'salmon',name:'Salmon',cat:'Protein',serving:'100g',p:25,c:0,f:13,cal:208,fiber:0,sodium:59,potassium:384,vitC:0,iron:0.8,calcium:12,tags:['high-protein','omega3']},
+  {id:'turkey',name:'Ground Turkey (lean)',cat:'Protein',serving:'100g',p:27,c:0,f:4,cal:148,fiber:0,sodium:72,potassium:300,vitC:0,iron:1.1,calcium:28,tags:['high-protein','lean']},
+  {id:'shrimp',name:'Shrimp',cat:'Protein',serving:'100g',p:24,c:0.2,f:0.3,cal:99,fiber:0,sodium:119,potassium:185,vitC:0,iron:0.5,calcium:70,tags:['high-protein','lean']},
+  {id:'egg',name:'Egg (1 large)',cat:'Protein',serving:'1 large / 50g',p:6.3,c:0.4,f:4.8,cal:72,fiber:0,sodium:71,potassium:69,vitC:0,iron:0.9,calcium:28,tags:[]},
+  {id:'eggwhite',name:'Liquid Egg White',cat:'Protein',serving:'122g / ½ cup',p:13.3,c:0.9,f:0.2,cal:64,fiber:0,sodium:200,potassium:185,vitC:0,iron:0.1,calcium:6,tags:['high-protein','lean']},
+  {id:'cottage',name:'Cottage Cheese',cat:'Protein',serving:'100g',p:11,c:3.4,f:4.3,cal:98,fiber:0,sodium:364,potassium:104,vitC:0,iron:0.1,calcium:83,tags:['high-protein','slow-protein','gut-friendly']},
+  {id:'greekyog',name:'Greek Yogurt (plain)',cat:'Protein',serving:'100g',p:10,c:3.6,f:0.4,cal:59,fiber:0,sodium:36,potassium:141,vitC:0,iron:0,calcium:110,tags:['high-protein','probiotic','gut-friendly']},
+  // Supplements
+  {id:'dymatize',name:'Dymatize Whey (Fruity Pebble)',cat:'Supplement',serving:'1 scoop',p:25,c:1,f:0,cal:110,fiber:0,sodium:130,potassium:150,vitC:0,iron:0,calcium:130,tags:['fast-protein']},
+  {id:'casein',name:'Casein Protein',cat:'Supplement',serving:'1 scoop / 34g',p:24,c:4,f:1,cal:120,fiber:0,sodium:135,potassium:180,vitC:0,iron:0,calcium:600,tags:['slow-protein','pre-bed']},
+  {id:'creatine',name:'Creatine (5g)',cat:'Supplement',serving:'5g',p:0,c:0,f:0,cal:0,fiber:0,sodium:0,potassium:0,vitC:0,iron:0,calcium:0,tags:[]},
+  // Dairy
+  {id:'milk1',name:'1% Milk',cat:'Dairy',serving:'1 cup / 240ml',p:8.2,c:12,f:2.4,cal:102,fiber:0,sodium:107,potassium:382,vitC:0,iron:0.1,calcium:305,tags:['calcium']},
+  {id:'milk2',name:'2% Milk',cat:'Dairy',serving:'1 cup / 240ml',p:8.1,c:12,f:4.8,cal:122,fiber:0,sodium:115,potassium:390,vitC:0,iron:0.1,calcium:293,tags:['calcium']},
+  {id:'milkwhole',name:'Whole Milk',cat:'Dairy',serving:'1 cup / 240ml',p:7.7,c:12,f:7.9,cal:149,fiber:0,sodium:105,potassium:349,vitC:0,iron:0.1,calcium:276,tags:['calcium']},
+  {id:'almond',name:'Almond Milk (unsweetened)',cat:'Dairy',serving:'1 cup / 240ml',p:1.1,c:1.1,f:2.6,cal:30,fiber:0.5,sodium:170,potassium:176,vitC:0,iron:0.7,calcium:481,tags:['low-cal']},
+  {id:'kefir',name:'Kefir (plain)',cat:'Dairy',serving:'1 cup / 240ml',p:9,c:12,f:2,cal:99,fiber:0,sodium:128,potassium:389,vitC:2,iron:0.1,calcium:300,tags:['probiotic','gut-friendly','calcium']},
+  // Grains
+  {id:'oatquick',name:'Quick Oats',cat:'Grains',serving:'1 cup dry / 81g',p:10.6,c:54,f:5.2,cal:306,fiber:8,sodium:2,potassium:335,vitC:0,iron:3.4,calcium:42,tags:['fiber','prebiotic','gut-friendly','budget']},
+  {id:'oatrolled',name:'Rolled Oats',cat:'Grains',serving:'½ cup dry / 40g',p:5,c:27,f:2.5,cal:150,fiber:4,sodium:1,potassium:167,vitC:0,iron:1.7,calcium:21,tags:['fiber','prebiotic','gut-friendly','budget']},
+  {id:'ricew',name:'White Rice (cooked)',cat:'Grains',serving:'1 cup / 186g',p:4,c:45,f:0.4,cal:200,fiber:0.6,sodium:2,potassium:55,vitC:0,iron:1.9,calcium:16,tags:['budget','easy-carb']},
+  {id:'riceb',name:'Brown Rice (cooked)',cat:'Grains',serving:'1 cup / 195g',p:5,c:45,f:1.8,cal:216,fiber:3.5,sodium:2,potassium:154,vitC:0,iron:0.8,calcium:23,tags:['fiber','budget']},
+  {id:'bread',name:'Bread (1 slice)',cat:'Grains',serving:'1 slice / 28g',p:3,c:13,f:0.5,cal:70,fiber:0.6,sodium:132,potassium:38,vitC:0,iron:0.9,calcium:27,tags:['budget']},
+  {id:'pasta',name:'Pasta (dry)',cat:'Grains',serving:'2 oz dry / 56g',p:7,c:42,f:1,cal:200,fiber:2,sodium:0,potassium:80,vitC:0,iron:1.8,calcium:10,tags:['budget','easy-carb']},
+  {id:'ricecake',name:'Rice Cakes',cat:'Grains',serving:'1 cake / 9g',p:1,c:7,f:0.3,cal:35,fiber:0.3,sodium:35,potassium:26,vitC:0,iron:0.1,calcium:1,tags:['low-cal','easy-carb']},
+  {id:'tortilla',name:'Flour Tortilla (medium)',cat:'Grains',serving:'1 medium / 45g',p:3,c:22,f:2.5,cal:120,fiber:1,sodium:230,potassium:50,vitC:0,iron:1.2,calcium:46,tags:[]},
+  // Fruit
+  {id:'banana',name:'Banana',cat:'Fruit',serving:'1 medium / 118g',p:1.3,c:27,f:0.4,cal:105,fiber:3.1,sodium:1,potassium:422,vitC:10,iron:0.3,calcium:6,tags:['prebiotic','potassium','budget']},
+  {id:'apple',name:'Apple',cat:'Fruit',serving:'1 medium / 182g',p:0.5,c:25,f:0.3,cal:95,fiber:4.4,sodium:2,potassium:195,vitC:8,iron:0.2,calcium:11,tags:['fiber','budget']},
+  {id:'blueberry',name:'Blueberries',cat:'Fruit',serving:'1 cup / 148g',p:1.1,c:21,f:0.5,cal:84,fiber:3.6,sodium:1,potassium:114,vitC:14,iron:0.4,calcium:9,tags:['fiber','antioxidant','gut-friendly']},
+  {id:'strawberry',name:'Strawberries',cat:'Fruit',serving:'5 berries / 90g',p:0.6,c:6.9,f:0.3,cal:29,fiber:1.8,sodium:1,potassium:155,vitC:49,iron:0.3,calcium:16,tags:['vitC','budget']},
+  {id:'orange',name:'Orange',cat:'Fruit',serving:'1 medium / 140g',p:1.3,c:18,f:0.2,cal:69,fiber:2.8,sodium:0,potassium:232,vitC:70,iron:0.1,calcium:52,tags:['vitC','fiber']},
+  {id:'pineapple',name:'Pineapple',cat:'Fruit',serving:'1 cup / 166g',p:0.9,c:22,f:0.2,cal:82,fiber:2.3,sodium:2,potassium:180,vitC:79,iron:0.5,calcium:21,tags:['vitC','anti-inflammatory']},
+  {id:'avocado',name:'Avocado',cat:'Fruit',serving:'1 whole / 201g',p:4,c:17,f:29,cal:322,fiber:13.5,sodium:14,potassium:975,vitC:20,iron:1.1,calcium:24,tags:['healthy-fat','fiber','potassium','gut-friendly']},
+  // Vegetables
+  {id:'sweetpot',name:'Sweet Potato',cat:'Vegetables',serving:'1 medium / 171g',p:3.4,c:36,f:0.3,cal:154,fiber:5.9,sodium:65,potassium:694,vitC:35,iron:1.4,calcium:68,tags:['fiber','potassium','budget','gut-friendly']},
+  {id:'potato',name:'White Potato',cat:'Vegetables',serving:'1 medium / 173g',p:4.3,c:37,f:0.2,cal:161,fiber:3.8,sodium:17,potassium:897,vitC:19,iron:1.9,calcium:26,tags:['potassium','budget']},
+  {id:'broccoli',name:'Broccoli',cat:'Vegetables',serving:'1 cup / 91g',p:2.6,c:6,f:0.3,cal:31,fiber:2.4,sodium:30,potassium:288,vitC:81,iron:0.7,calcium:43,tags:['fiber','vitC','gut-friendly']},
+  {id:'spinach',name:'Spinach (raw)',cat:'Vegetables',serving:'1 cup / 30g',p:0.9,c:1.1,f:0.1,cal:7,fiber:0.7,sodium:24,potassium:167,vitC:8,iron:0.8,calcium:30,tags:['iron']},
+  {id:'pepper',name:'Bell Pepper',cat:'Vegetables',serving:'1 medium / 114g',p:1.1,c:7.5,f:0.2,cal:32,fiber:2.5,sodium:4,potassium:251,vitC:128,iron:0.5,calcium:11,tags:['vitC','fiber','budget']},
+  {id:'onion',name:'White Onion',cat:'Vegetables',serving:'1 medium / 94g',p:1.3,c:9.5,f:0.2,cal:41,fiber:1.7,sodium:3,potassium:161,vitC:7,iron:0.2,calcium:23,tags:['prebiotic','gut-friendly','budget']},
+  {id:'garlic',name:'Garlic (1 clove)',cat:'Vegetables',serving:'1 clove / 3g',p:0.2,c:1,f:0,cal:4,fiber:0.1,sodium:1,potassium:12,vitC:1,iron:0,calcium:5,tags:['prebiotic','gut-friendly']},
+  {id:'greenbean',name:'Green Beans',cat:'Vegetables',serving:'1 cup / 100g',p:1.8,c:7,f:0.1,cal:31,fiber:3.4,sodium:6,potassium:211,vitC:12,iron:1,calcium:37,tags:['fiber','budget']},
+  // Fats
+  {id:'pb',name:'Peanut Butter',cat:'Fats',serving:'2 tbsp / 32g',p:7,c:7.7,f:16,cal:188,fiber:1.5,sodium:147,potassium:214,vitC:0,iron:0.6,calcium:17,tags:['budget']},
+  {id:'pb2',name:'PB2 (powdered PB)',cat:'Fats',serving:'2 tbsp / 12g',p:6,c:5,f:1.5,cal:60,fiber:1,sodium:90,potassium:180,vitC:0,iron:0.5,calcium:15,tags:['low-fat','budget']},
+  {id:'oliveoil',name:'Olive Oil',cat:'Fats',serving:'1 tbsp / 14g',p:0,c:0,f:14,cal:119,fiber:0,sodium:0,potassium:1,vitC:0,iron:0,calcium:0,tags:['healthy-fat']},
+  {id:'almondnut',name:'Almonds',cat:'Fats',serving:'1 oz / 28g',p:6,c:6,f:14,cal:164,fiber:3.5,sodium:1,potassium:200,vitC:0,iron:1.1,calcium:76,tags:['healthy-fat','fiber','calcium']},
+  {id:'honey',name:'Honey',cat:'Fats',serving:'1 tbsp / 21g',p:0.1,c:17,f:0,cal:64,fiber:0,sodium:1,potassium:11,vitC:0,iron:0.1,calcium:1,tags:[]},
+  {id:'kombucha',name:'Kombucha',cat:'Supplement',serving:'1 bottle / 240ml',p:0,c:8,f:0,cal:30,fiber:0,sodium:10,potassium:30,vitC:0,iron:0,calcium:0,tags:['probiotic','gut-friendly']},
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let S = {
+  meal: [],
+  saved: [],
+  prefs: {
+    calTarget:3100, proteinTarget:170, carbTarget:420, fatTarget:53,
+    excluded:[], favored:[]
+  },
+  dailyMeals: [],
+  activeCat: 'All',
+  lastAIResult: null
+};
+
+// ─────────────────────────────────────────────
+// STORAGE
+// ─────────────────────────────────────────────
+const MEM = {};
+async function sGet(k){
+  try{ if(window.storage){ const r=await window.storage.get(k); return r?JSON.parse(r.value):null; } }catch(e){}
+  return MEM[k]||null;
+}
+async function sSet(k,v){
+  try{ if(window.storage){ await window.storage.set(k,JSON.stringify(v)); return; } }catch(e){}
+  MEM[k]=v;
+}
+async function persist(){ await sSet('zc-saved',S.saved); await sSet('zc-prefs',S.prefs); await sSet('zc-daily',S.dailyMeals); }
+async function loadState(){
+  const sv=await sGet('zc-saved'); if(sv) S.saved=sv;
+  const pr=await sGet('zc-prefs'); if(pr) S.prefs={...S.prefs,...pr};
+  const dl=await sGet('zc-daily'); if(dl) S.dailyMeals=dl;
+}
+
+// ─────────────────────────────────────────────
+// MATH
+// ─────────────────────────────────────────────
+function calcMeal(items){
+  let p=0,c=0,f=0,cal=0,fiber=0,sodium=0,potassium=0,vitC=0,iron=0,calcium=0;
+  for(const item of items){
+    const ing=DB.find(x=>x.id===item.id); if(!ing) continue;
+    const m=item.qty||1;
+    p+=ing.p*m; c+=ing.c*m; f+=ing.f*m; cal+=ing.cal*m;
+    fiber+=ing.fiber*m; sodium+=ing.sodium*m; potassium+=ing.potassium*m;
+    vitC+=ing.vitC*m; iron+=ing.iron*m; calcium+=ing.calcium*m;
+  }
+  return {p,c,f,cal,fiber,sodium,potassium,vitC,iron,calcium};
+}
+const ri = n => Math.round(n);
+const r1 = n => Math.round(n*10)/10;
+const pct = (v,t) => Math.min(100,Math.round(v/t*100));
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function setTab(name,el){
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.content-inner').forEach(d=>d.classList.remove('show'));
+  document.getElementById('tab-'+name).classList.add('show');
+  renderTab(name);
+}
+function renderTab(name){
+  if(name==='builder') renderBuilder();
+  else if(name==='ai') renderAI();
+  else if(name==='saved') renderSaved();
+  else if(name==='prefs') renderPrefs();
+  else if(name==='micros') renderMicros();
+  updateHeader();
+}
+function updateHeader(){
+  const t=calcMeal(S.dailyMeals.flatMap(m=>m.items));
+  document.getElementById('header-cal').textContent=`${ri(t.cal)} / ${S.prefs.calTarget} cal today`;
+}
+
+// ─────────────────────────────────────────────
+// BUILDER TAB
+// ─────────────────────────────────────────────
+function renderBuilder(){
+  const el=document.getElementById('tab-builder');
+  const totals=calcMeal(S.meal);
+  const cats=['All',...new Set(DB.map(x=>x.cat))];
+
+  el.innerHTML=`<div class="builder-grid">
+  <div class="card">
+    <p class="section-title">Ingredient Library</p>
+    <input class="ing-search" id="ing-search" placeholder="Search ingredients…" oninput="filterIngs()">
+    <div class="cat-filter">${cats.map(c=>`<button class="cat-btn${c===S.activeCat?' active':''}" onclick="setCat('${c}',this)">${c}</button>`).join('')}</div>
+    <div class="ing-list" id="ing-list"></div>
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:12px">
+      <p class="section-title">Current Meal</p>
+      <div class="macro-row">
+        <div class="macro-pill prot"><div class="val">${ri(totals.p)}g</div><div class="lbl">Protein</div></div>
+        <div class="macro-pill carb"><div class="val">${ri(totals.c)}g</div><div class="lbl">Carbs</div></div>
+        <div class="macro-pill fat"><div class="val">${ri(totals.f)}g</div><div class="lbl">Fat</div></div>
+        <div class="macro-pill cal"><div class="val">${ri(totals.cal)}</div><div class="lbl">Cal</div></div>
+      </div>
+      <div class="prog-row">
+        <span class="prog-label">Protein</span>
+        <div class="prog-bar"><div class="prog-fill prot" style="width:${pct(totals.p,S.prefs.proteinTarget)}%"></div></div>
+        <span class="prog-val">${ri(totals.p)}/${S.prefs.proteinTarget}g</span>
+      </div>
+      <div class="prog-row">
+        <span class="prog-label">Calories</span>
+        <div class="prog-bar"><div class="prog-fill cal" style="width:${pct(totals.cal,S.prefs.calTarget)}%"></div></div>
+        <span class="prog-val">${ri(totals.cal)}/${S.prefs.calTarget}</span>
+      </div>
+      <div class="divider"></div>
+      <div id="meal-items">
+        ${S.meal.length===0?`<div class="empty" style="padding:16px">Add ingredients from the left</div>`:''}
+        ${S.meal.map(item=>{
+          const ing=DB.find(x=>x.id===item.id); if(!ing) return '';
+          const t=calcMeal([item]);
+          return `<div class="meal-item">
+            <span class="meal-name">${ing.name}</span>
+            <input class="qty-input" type="number" step="0.25" min="0.25" value="${item.qty}" onchange="updateQty('${item.id}',this.value)">
+            <span class="qty-unit">× srv</span>
+            <span class="meal-item-macros">${ri(t.p)}p ${ri(t.c)}c ${ri(t.f)}f</span>
+            <button class="rm-btn" onclick="removeIng('${item.id}')">×</button>
+          </div>`;
+        }).join('')}
+      </div>
+      ${S.meal.length>0?`
+      <div class="divider"></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+        <input id="meal-name-in" placeholder="Name this meal…" style="flex:1;min-width:110px;padding:7px 10px;border:1px solid #e5e3db;border-radius:6px;font-size:13px;outline:none">
+        <button class="btn btn-primary btn-sm" onclick="saveMeal()">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="addToDaily()">+ Log Day</button>
+        <button class="btn btn-sm" style="color:#dc2626;padding:5px 8px" onclick="clearMeal()">Clear</button>
+      </div>`:''}
+    </div>
+    <div id="gut-flags"></div>
+  </div>
+</div>`;
+
+  filterIngs();
+  renderGutFlags(totals);
+}
+
+function filterIngs(){
+  const q=(document.getElementById('ing-search')?.value||'').toLowerCase();
+  const excluded=S.prefs.excluded, favored=S.prefs.favored, cat=S.activeCat;
+  const items=DB.filter(x=>(cat==='All'||x.cat===cat)&&(!q||x.name.toLowerCase().includes(q)))
+    .sort((a,b)=>{
+      const af=favored.includes(a.id),bf=favored.includes(b.id);
+      return (af&&!bf)?-1:(bf&&!af)?1:a.name.localeCompare(b.name);
+    });
+  const el=document.getElementById('ing-list'); if(!el) return;
+  el.innerHTML=items.map(x=>{
+    const isEx=excluded.includes(x.id), isFav=favored.includes(x.id);
+    const inMeal=S.meal.find(m=>m.id===x.id);
+    return `<div class="ing-item${isEx?' excluded':''}">
+      <div style="flex:1;min-width:0">
+        <div class="ing-name">${isFav?`<span class="fav-star">★</span>`:''}${x.name}${inMeal?`<span class="in-meal-badge">✓</span>`:''}</div>
+        <div class="ing-sub">${x.serving}</div>
+      </div>
+      <div class="ing-macros">${x.p}p · ${x.c}c · ${x.f}f<br>${x.cal} cal</div>
+      <button class="add-btn" onclick="addIng('${x.id}')">+</button>
+    </div>`;
+  }).join('')||`<div class="empty">No results</div>`;
+}
+
+function setCat(cat,el){
+  S.activeCat=cat;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  filterIngs();
+}
+
+function addIng(id){
+  const e=S.meal.find(x=>x.id===id);
+  if(e) e.qty=Math.round((e.qty+1)*4)/4;
+  else S.meal.push({id,qty:1});
+  renderBuilder();
+}
+function removeIng(id){ S.meal=S.meal.filter(x=>x.id!==id); renderBuilder(); }
+function updateQty(id,v){
+  const item=S.meal.find(x=>x.id===id);
+  if(item) item.qty=Math.max(0.25,parseFloat(v)||1);
+  const t=calcMeal(S.meal);
+  document.querySelectorAll('.macro-pill.prot .val').forEach(e=>e.textContent=ri(t.p)+'g');
+  document.querySelectorAll('.macro-pill.carb .val').forEach(e=>e.textContent=ri(t.c)+'g');
+  document.querySelectorAll('.macro-pill.fat .val').forEach(e=>e.textContent=ri(t.f)+'g');
+  document.querySelectorAll('.macro-pill.cal .val').forEach(e=>e.textContent=ri(t.cal));
+  document.querySelectorAll('.meal-item-macros').forEach((e,i)=>{
+    const m=calcMeal([S.meal[i]]); if(S.meal[i]) e.textContent=`${ri(m.p)}p ${ri(m.c)}c ${ri(m.f)}f`;
+  });
+  renderGutFlags(t);
+}
+function clearMeal(){ S.meal=[]; renderBuilder(); }
+
+function saveMeal(){
+  if(!S.meal.length) return;
+  const name=document.getElementById('meal-name-in')?.value||`Meal ${S.saved.length+1}`;
+  const totals=calcMeal(S.meal);
+  S.saved.push({id:Date.now(),name,items:[...S.meal],totals,date:new Date().toLocaleDateString()});
+  persist();
+  const btn=event.target; btn.textContent='Saved ✓';
+  setTimeout(()=>{ btn.textContent='Save'; },1500);
+}
+
+function addToDaily(){
+  if(!S.meal.length) return;
+  const name=document.getElementById('meal-name-in')?.value||`Meal ${S.dailyMeals.length+1}`;
+  const totals=calcMeal(S.meal);
+  S.dailyMeals.push({id:Date.now(),name,items:[...S.meal],totals});
+  persist(); updateHeader();
+  const btn=event.target; btn.textContent='Logged ✓';
+  setTimeout(()=>{ btn.textContent='+ Log Day'; },1500);
+}
+
+function renderGutFlags(totals){
+  const el=document.getElementById('gut-flags'); if(!el||!S.meal.length){if(el)el.innerHTML='';return;}
+  const flags=[];
+  if(totals.fiber<3) flags.push({type:'warn',msg:'Low fiber. Try adding oats, sweet potato, avocado, or fruit.'});
+  if(totals.sodium>700) flags.push({type:'warn',msg:`High sodium: ${ri(totals.sodium)}mg in this meal alone.`});
+  const gutFoods=S.meal.some(i=>{ const g=DB.find(x=>x.id===i.id); return g&&g.tags.includes('gut-friendly'); });
+  if(!gutFoods&&S.meal.length>2) flags.push({type:'info',msg:'No gut-friendly foods. Consider oats, banana, garlic, onion, kefir, or kombucha.'});
+  const hasQualityProtein=S.meal.some(i=>{ const g=DB.find(x=>x.id===i.id); return g&&(g.cat==='Protein'||g.cat==='Supplement'||g.p>8); });
+  if(!hasQualityProtein&&totals.cal>150) flags.push({type:'warn',msg:'No quality protein source detected in this meal.'});
+  if(totals.cal>1200) flags.push({type:'info',msg:`Large meal: ${ri(totals.cal)} cal. Make sure this fits your day.`});
+  el.innerHTML=flags.map(f=>`<div class="alert ${f.type}"><span>${f.type==='warn'?'⚠':'ℹ'}</span><span>${f.msg}</span></div>`).join('');
+}
+
+// ─────────────────────────────────────────────
+// AI SUGGEST TAB
+// ─────────────────────────────────────────────
+function renderAI(){
+  const el=document.getElementById('tab-ai');
+  el.innerHTML=`<div style="max-width:680px">
+  <div class="card">
+    <p class="section-title">AI Meal Suggestion</p>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:16px">Describe your target and I'll build a meal from your library. Excluded foods and preferences are automatically applied.</p>
+    <div class="grid2" style="margin-bottom:12px">
+      <div>
+        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Protein target (g)</label>
+        <input type="number" id="ai-prot" value="${Math.round(S.prefs.proteinTarget/4)}" style="width:100%;padding:8px;border:1px solid #e5e3db;border-radius:6px;font-size:14px;outline:none">
+      </div>
+      <div>
+        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Calorie target</label>
+        <input type="number" id="ai-cal" value="${Math.round(S.prefs.calTarget/4)}" style="width:100%;padding:8px;border:1px solid #e5e3db;border-radius:6px;font-size:14px;outline:none">
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Meal timing</label>
+      <select id="ai-timing" style="width:100%;padding:8px;border:1px solid #e5e3db;border-radius:6px;font-size:13px;background:#fff;outline:none">
+        <option>Morning (quick, pre-commute)</option>
+        <option>Lunch (mid-day, filling anchor meal)</option>
+        <option>Pre-workout (carb-forward, ~3:30 PM)</option>
+        <option>Post-workout dinner (protein + carbs, ~7 PM)</option>
+        <option>Pre-bed (slow protein, light)</option>
+      </select>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Additional notes (optional)</label>
+      <input type="text" id="ai-notes" placeholder="e.g. quick to prep, budget-friendly, high fiber, gut health focus…" style="width:100%;padding:8px;border:1px solid #e5e3db;border-radius:6px;font-size:13px;outline:none">
+    </div>
+    <button class="btn btn-primary" id="ai-btn" onclick="runAI()">Generate Meal Suggestion ↗</button>
+  </div>
+  <div id="ai-result"></div>
+</div>`;
+}
+
+async function runAI(){
+  const btn=document.getElementById('ai-btn');
+  const prot=document.getElementById('ai-prot')?.value||40;
+  const cal=document.getElementById('ai-cal')?.value||700;
+  const timing=document.getElementById('ai-timing')?.value||'Lunch';
+  const notes=document.getElementById('ai-notes')?.value||'';
+  btn.innerHTML=`<span class="spinner"></span> Thinking…`; btn.disabled=true;
+
+  const excluded=S.prefs.excluded;
+  const favored=S.prefs.favored;
+  const ingList=DB.filter(x=>!excluded.includes(x.id))
+    .map(x=>`${x.name} [${x.serving}]: ${x.p}g P, ${x.c}g C, ${x.f}g F, ${x.cal} cal, fiber:${x.fiber}g`)
+    .join('\n');
+  const favNames=favored.map(id=>DB.find(x=>x.id===id)?.name).filter(Boolean).join(', ');
+
+  const prompt=`You are a sports nutrition expert. Build a single meal for a 157-lb male athlete in a lean bulk (daily targets: ${S.prefs.proteinTarget}g protein, ${S.prefs.calTarget} cal).
+
+Meal timing: ${timing}
+Protein target for this meal: ~${prot}g
+Calorie target for this meal: ~${cal} cal
+${notes?'Notes: '+notes:''}
+${favNames?'Prefer using: '+favNames:''}
+
+Use ONLY ingredients from this list. Specify servings as a decimal multiplier of the listed serving size (e.g. 1.5 means 1.5x the listed serving):
+${ingList}
+
+Return ONLY valid JSON, no markdown, no explanation:
+{"meal_name":"...","timing_note":"one sentence why this meal fits the timing","items":[{"id":"ingredient_id","name":"exact name","servings":1.0,"prep":"short prep note"}],"gut_note":"gut health observation","macros":{"protein":0,"carbs":0,"fat":0,"calories":0}}`;
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const text=data.content.filter(x=>x.type==='text').map(x=>x.text).join('');
+    const meal=JSON.parse(text.replace(/```json|```/g,'').trim());
+    S.lastAIResult=meal;
+    renderAIResult(meal);
+  }catch(e){
+    document.getElementById('ai-result').innerHTML=`<div class="alert danger" style="margin-top:14px">Generation failed: ${e.message}. Check your network and try again.</div>`;
+  }
+  btn.innerHTML='Generate Meal Suggestion ↗'; btn.disabled=false;
+}
+
+function renderAIResult(meal){
+  const el=document.getElementById('ai-result');
+  el.innerHTML=`<div class="ai-result-card">
+    <h3>${meal.meal_name}</h3>
+    <p style="font-size:13px;color:#4b7a5c;margin-bottom:12px">${meal.timing_note}</p>
+    ${meal.items.map(item=>`<div class="ai-item-row">
+      <div><div style="font-weight:500">${item.name}</div>${item.prep?`<div class="ai-note">${item.prep}</div>`:''}</div>
+      <span style="color:#374151;white-space:nowrap">${item.servings}× serving</span>
+    </div>`).join('')}
+    <div style="border-top:1px solid #d1fae5;margin:10px 0;padding-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:13px">
+      <span style="color:#7c3aed"><b>${meal.macros.protein}g</b> P</span>
+      <span style="color:#d97706"><b>${meal.macros.carbs}g</b> C</span>
+      <span style="color:#dc2626"><b>${meal.macros.fat}g</b> F</span>
+      <span style="color:#16a34a"><b>${meal.macros.calories}</b> cal</span>
+    </div>
+    ${meal.gut_note?`<div class="alert success" style="margin-top:8px">🌿 ${meal.gut_note}</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary btn-sm" onclick="loadAIIntoBuilder()">Load into Builder</button>
+      <button class="btn btn-ghost btn-sm" onclick="runAI()">Regenerate</button>
+    </div>
+  </div>`;
+}
+
+function loadAIIntoBuilder(){
+  if(!S.lastAIResult) return;
+  const items=S.lastAIResult.items.map(item=>{
+    const ing=DB.find(x=>x.id===item.id||x.name.toLowerCase()===item.name.toLowerCase());
+    return ing?{id:ing.id,qty:item.servings}:null;
+  }).filter(Boolean);
+  S.meal=items;
+  setTab('builder',document.querySelector('.nav button'));
+}
+
+// ─────────────────────────────────────────────
+// SAVED MEALS TAB
+// ─────────────────────────────────────────────
+function renderSaved(){
+  const el=document.getElementById('tab-saved');
+  const daily=S.dailyMeals, saved=S.saved;
+  if(!daily.length&&!saved.length){ el.innerHTML=`<div class="empty">No saved meals yet. Build a meal and save or log it.</div>`; return; }
+
+  const dt=calcMeal(daily.flatMap(m=>m.items));
+
+  el.innerHTML=`
+  ${daily.length?`
+  <div style="margin-bottom:24px">
+    <p class="section-title">Today's Log</p>
+    <div class="card" style="margin-bottom:12px">
+      <div class="macro-row">
+        <div class="macro-pill prot"><div class="val">${ri(dt.p)}g</div><div class="lbl">Protein</div></div>
+        <div class="macro-pill carb"><div class="val">${ri(dt.c)}g</div><div class="lbl">Carbs</div></div>
+        <div class="macro-pill fat"><div class="val">${ri(dt.f)}g</div><div class="lbl">Fat</div></div>
+        <div class="macro-pill cal"><div class="val">${ri(dt.cal)}</div><div class="lbl">Cal</div></div>
+      </div>
+      <div class="prog-row">
+        <span class="prog-label">Protein</span>
+        <div class="prog-bar"><div class="prog-fill prot" style="width:${pct(dt.p,S.prefs.proteinTarget)}%"></div></div>
+        <span class="prog-val">${ri(dt.p)}/${S.prefs.proteinTarget}g</span>
+      </div>
+      <div class="prog-row">
+        <span class="prog-label">Calories</span>
+        <div class="prog-bar"><div class="prog-fill cal" style="width:${pct(dt.cal,S.prefs.calTarget)}%"></div></div>
+        <span class="prog-val">${ri(dt.cal)}/${S.prefs.calTarget}</span>
+      </div>
+    </div>
+    ${daily.map(m=>`<div class="card" style="margin-bottom:8px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div style="font-weight:500;font-size:14px">${m.name}</div>
+        <div style="font-size:12px;color:#6b7280">${ri(m.totals.p)}g P · ${ri(m.totals.c)}g C · ${ri(m.totals.f)}g F · ${ri(m.totals.cal)} cal</div>
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="removeDailyMeal(${m.id})">Remove</button>
+    </div>`).join('')}
+    <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="clearDaily()">Clear today's log</button>
+  </div>`:''}
+
+  ${saved.length?`
+  <p class="section-title">Saved Meal Archive</p>
+  <div class="saved-grid">
+    ${saved.map(m=>`<div class="saved-card">
+      <h4>${m.name}</h4>
+      <div class="saved-meta">${m.date} · ${m.items.length} ingredient${m.items.length!==1?'s':''}</div>
+      <div class="saved-macros">
+        <span style="color:#7c3aed">${ri(m.totals.p)}g P</span>
+        <span style="color:#d97706">${ri(m.totals.c)}g C</span>
+        <span style="color:#dc2626">${ri(m.totals.f)}g F</span>
+        <span style="color:#16a34a">${ri(m.totals.cal)} cal</span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="loadSaved(${m.id})">Load</button>
+        <button class="btn btn-ghost btn-sm" onclick="addSavedToDaily(${m.id})">+ Log</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSaved(${m.id})">Delete</button>
+      </div>
+    </div>`).join('')}
+  </div>`:''}`;
+}
+
+function loadSaved(id){
+  const m=S.saved.find(x=>x.id===id); if(!m) return;
+  S.meal=[...m.items];
+  setTab('builder',document.querySelector('.nav button'));
+}
+function deleteSaved(id){ S.saved=S.saved.filter(x=>x.id!==id); persist(); renderSaved(); }
+function addSavedToDaily(id){
+  const m=S.saved.find(x=>x.id===id); if(!m) return;
+  S.dailyMeals.push({...m,id:Date.now()}); persist(); updateHeader(); renderSaved();
+}
+function removeDailyMeal(id){ S.dailyMeals=S.dailyMeals.filter(x=>x.id!==id); persist(); updateHeader(); renderSaved(); }
+function clearDaily(){ S.dailyMeals=[]; persist(); updateHeader(); renderSaved(); }
+
+// ─────────────────────────────────────────────
+// PREFERENCES TAB
+// ─────────────────────────────────────────────
+function renderPrefs(){
+  const el=document.getElementById('tab-prefs');
+  const {calTarget,proteinTarget,carbTarget,fatTarget,excluded,favored}=S.prefs;
+  const unexcluded=DB.filter(x=>!excluded.includes(x.id));
+  const unfavored=DB.filter(x=>!favored.includes(x.id));
+
+  el.innerHTML=`<div style="max-width:640px">
+  <div class="card" style="margin-bottom:14px">
+    <p class="section-title">Daily Macro Targets</p>
+    <div class="grid2">
+      <div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Calories</label>
+        <input type="number" id="pref-cal" value="${calTarget}" style="width:100%;padding:8px;border:1px solid #e5e3db;border-radius:6px;font-size:14px;outline:none" onchange="savePref()"></div>
+      <div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Protein (g)</label>
+        <input type="number" id="pref-prot" value="${proteinTarget}" style="width:100%;padding:8px;border:1px solid #e5e3db;border-radius:6px;font-size:14px;outline:none" onchange="savePref()"></div>
+      <div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Carbs (g)</label>
+        <input type="number" id="pref-carb" value="${carbTarget}" style="width:100%;padding:8px;border:1px solid #e5e3db;border-radius:6px;font-size:14px;outline:none" onchange="savePref()"></div>
+      <div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Fat (g)</label>
+        <input type="number" id="pref-fat" value="${fatTarget}" style="width:100%;padding:8px;border:1px solid #e5e3db;border-radius:6px;font-size:14px;outline:none" onchange="savePref()"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <p class="section-title">Favored Foods</p>
+    <p style="font-size:12px;color:#6b7280">These appear at the top of your ingredient list and are preferred in AI suggestions.</p>
+    <div class="tag-list">${favored.map(id=>{const g=DB.find(x=>x.id===id);return g?`<span class="tag" style="background:#fef3c7;color:#92400e">${g.name}<button class="tag-remove" onclick="removeFav('${id}')">×</button></span>`:''}).join('')}</div>
+    <div class="pref-add-row">
+      <select id="fav-sel" class="pref-select"><option value="">Add a favored food…</option>${unfavored.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select>
+      <button class="btn btn-ghost btn-sm" onclick="addFav()">Add</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="section-title">Excluded Foods</p>
+    <p style="font-size:12px;color:#6b7280">These are dimmed in the library and skipped in AI suggestions.</p>
+    <div class="tag-list">${excluded.map(id=>{const g=DB.find(x=>x.id===id);return g?`<span class="tag" style="background:#fef2f2;color:#7f1d1d">${g.name}<button class="tag-remove" onclick="removeExcl('${id}')">×</button></span>`:''}).join('')}</div>
+    <div class="pref-add-row">
+      <select id="excl-sel" class="pref-select"><option value="">Exclude a food…</option>${unexcluded.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select>
+      <button class="btn btn-ghost btn-sm" onclick="addExcl()">Exclude</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function savePref(){
+  S.prefs.calTarget=parseInt(document.getElementById('pref-cal')?.value)||3100;
+  S.prefs.proteinTarget=parseInt(document.getElementById('pref-prot')?.value)||170;
+  S.prefs.carbTarget=parseInt(document.getElementById('pref-carb')?.value)||420;
+  S.prefs.fatTarget=parseInt(document.getElementById('pref-fat')?.value)||53;
+  persist(); updateHeader();
+}
+function addFav(){ const s=document.getElementById('fav-sel'); if(s?.value&&!S.prefs.favored.includes(s.value)){S.prefs.favored.push(s.value);persist();renderPrefs();} }
+function removeFav(id){ S.prefs.favored=S.prefs.favored.filter(x=>x!==id); persist(); renderPrefs(); }
+function addExcl(){ const s=document.getElementById('excl-sel'); if(s?.value&&!S.prefs.excluded.includes(s.value)){S.prefs.excluded.push(s.value);persist();renderPrefs();} }
+function removeExcl(id){ S.prefs.excluded=S.prefs.excluded.filter(x=>x!==id); persist(); renderPrefs(); }
+
+// ─────────────────────────────────────────────
+// MICROS TAB
+// ─────────────────────────────────────────────
+const MICRO_T={fiber:38,sodium:2300,potassium:4700,vitC:90,iron:8,calcium:1000};
+const MICRO_L={fiber:'Fiber',sodium:'Sodium',potassium:'Potassium',vitC:'Vitamin C',iron:'Iron',calcium:'Calcium'};
+const MICRO_U={fiber:'g',sodium:'mg',potassium:'mg',vitC:'mg',iron:'mg',calcium:'mg'};
+const MICRO_F={fiber:r1,sodium:ri,potassium:ri,vitC:ri,iron:r1,calcium:ri};
+
+function microTable(totals,title){
+  return `<div class="card" style="margin-bottom:14px">
+    <p class="section-title">${title}</p>
+    ${Object.keys(MICRO_T).map(k=>{
+      const v=totals[k]||0, t=MICRO_T[k], p=pct(v,t);
+      const barColor=p>=100?'#16a34a':p>=50?'#d97706':'#dc2626';
+      return `<div class="micro-row">
+        <span class="micro-name">${MICRO_L[k]}</span>
+        <div class="micro-bar"><div class="micro-bar-fill" style="width:${p}%;background:${barColor}"></div></div>
+        <span class="micro-val">${MICRO_F[k](v)} <span style="font-size:11px;color:#9ca3af">${MICRO_U[k]}</span></span>
+        <span class="micro-pct">${p}% DV</span>
+        ${p<40?`<span style="font-size:11px;color:#dc2626;margin-left:4px">▼</span>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderMicros(){
+  const el=document.getElementById('tab-micros');
+  const mealT=calcMeal(S.meal);
+  const dayT=calcMeal(S.dailyMeals.flatMap(m=>m.items));
+  const checkT=S.dailyMeals.length?dayT:mealT;
+
+  const gaps=[];
+  if((checkT.fiber||0)<15) gaps.push('Fiber — oats, sweet potato, avocado, apple, broccoli');
+  if((checkT.vitC||0)<30) gaps.push('Vitamin C — bell peppers, orange, strawberries, broccoli');
+  if((checkT.iron||0)<4) gaps.push('Iron — spinach, ground beef, oats');
+  if((checkT.potassium||0)<2000) gaps.push('Potassium — potato, banana, avocado, salmon');
+  if((checkT.calcium||0)<400) gaps.push('Calcium — kefir, milk, greek yogurt, almonds');
+
+  el.innerHTML=`
+  ${!S.meal.length&&!S.dailyMeals.length?`<div class="empty">Add ingredients to the builder or log meals to see your micro breakdown.</div>`:''}
+  ${S.meal.length?microTable(mealT,'Current Meal Micros'):''}
+  ${S.dailyMeals.length?microTable(dayT,"Today's Total Micros"):''}
+  ${gaps.length?`<div class="card">
+    <p class="section-title">Gaps to Address</p>
+    ${gaps.map(g=>`<div class="alert warn" style="margin-bottom:6px"><span>⚡</span><span><b>${g.split(' —')[0]}</b> is low — ${g.split(' — ')[1]}</span></div>`).join('')}
+  </div>`:''}`;
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+(async()=>{
+  await loadState();
+  renderTab('builder');
+})();
+</script>
+</body>
+</html>

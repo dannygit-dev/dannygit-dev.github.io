@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Daily Routine Planner</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-size:15px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;background:#f5f4f0;color:#1c1c1a;line-height:1.5;padding:20px}
+button{cursor:pointer;font:inherit;border:none;background:none}
+
+h2{font-size:15px;font-weight:600;color:#1c1c1a;margin-bottom:16px}
+
+.tabs{display:flex;gap:2px;margin-bottom:1.5rem;border-bottom:1px solid #e5e3db}
+.tab{padding:8px 14px;font-size:13px;cursor:pointer;border:none;background:none;color:#6b7280;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.tab.active{color:#1c1c1a;border-bottom-color:#1c1c1a;font-weight:500}
+.tab:hover:not(.active){color:#374151}
+.panel{display:none}.panel.active{display:block}
+
+.tl-row{display:flex;gap:12px;align-items:flex-start;margin-bottom:4px}
+.tl-time{font-size:11px;color:#6b7280;min-width:80px;padding-top:2px;text-align:right}
+.tl-dot{width:9px;height:9px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.tl-label{font-size:14px;color:#1c1c1a}
+.tl-sub{font-size:12px;color:#6b7280;margin-top:1px}
+
+.mc{background:#f5f4f0;border-radius:8px;padding:12px 14px;margin-bottom:8px;border:1px solid #e5e3db}
+.bar-bg{height:5px;background:#e5e3db;border-radius:3px;overflow:hidden;margin-top:3px}
+.bar-fill{height:100%;border-radius:3px}
+
+.split-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #f0efeb}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap}
+
+.rule-card{padding:11px 14px;border-left:2px solid;margin-bottom:9px;border-radius:0 8px 8px 0}
+
+.day-pill{font-size:12px;padding:4px 10px;border-radius:12px;cursor:pointer;border:1px solid #e5e3db;background:transparent;color:#6b7280;transition:all .15s}
+.day-pill.on{background:#1c1c1a;color:#fff;border-color:transparent}
+
+.metric-grid{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.metric{background:#f5f4f0;border-radius:8px;padding:10px 16px;flex:1;min-width:90px;border:1px solid #e5e3db}
+.metric .val{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.metric .lbl{font-size:12px;color:#6b7280}
+
+.note-box{padding:10px 12px;background:#f5f4f0;border-radius:8px;font-size:12px;color:#6b7280;line-height:1.5;margin-top:4px;border:1px solid #e5e3db}
+</style>
+</head>
+<body>
+<h2>Daily Routine Planner</h2>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('schedule',this)">Schedule</button>
+  <button class="tab" onclick="showTab('macros',this)">Macro Timing</button>
+  <button class="tab" onclick="showTab('split',this)">Workout Split</button>
+  <button class="tab" onclick="showTab('rules',this)">Back on Track</button>
+</div>
+
+<div class="panel active" id="p-schedule">
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button class="day-pill on" id="pill-work" onclick="setDay('work',this)">Workday</button>
+    <button class="day-pill" id="pill-weekend" onclick="setDay('weekend',this)">Weekend</button>
+  </div>
+  <div id="tl"></div>
+</div>
+
+<div class="panel" id="p-macros">
+  <div class="metric-grid">
+    <div class="metric"><div class="val">3,100</div><div class="lbl">Daily calories</div></div>
+    <div class="metric"><div class="val">150g</div><div class="lbl">Protein target</div></div>
+    <div class="metric"><div class="val">~470g</div><div class="lbl">Carb target</div></div>
+  </div>
+  <div id="mc"></div>
+  <div class="note-box">At 150g protein and 3,100 cal, ~470g carbs and ~58g fat fill the remaining calories. Carbs are front-loaded toward lunch and post-workout dinner where they do the most work. Gut health: greens powder (morning), prebiotic fiber from oats + banana, garlic/onions in cooking, kefir or kombucha. Multivitamin as daily insurance.</div>
+</div>
+
+<div class="panel" id="p-split">
+  <div id="sp"></div>
+  <div class="note-box" style="margin-top:12px">Slip the split forward by one day if you miss — never skip, always shift. Saturday is intentionally flexible so busy weeks don't break the core 4.</div>
+</div>
+
+<div class="panel" id="p-rules">
+  <div id="rl"></div>
+</div>
+
+<script>
+var WD=[
+  {t:"7:00 AM",l:"Wake up",s:"Phone across the room — no snooze",d:"#378ADD"},
+  {t:"7:00–7:15",l:"Morning protein window",s:"Shake + banana + oats · ~28g protein · don't skip",d:"#1D9E75"},
+  {t:"7:15–7:20",l:"Leave for work",s:"40 min commute",d:"#888780"},
+  {t:"8:00 AM",l:"Work begins",s:"First 15 min: write today's 3 priorities",d:"#378ADD"},
+  {t:"12:00–1:00",l:"Lunch — anchor meal",s:"~800 cal · ~40g protein · carb-heavy · don't skip",d:"#1D9E75"},
+  {t:"3:30–4:00",l:"Pre-workout snack",s:"Carb-forward · ~22g protein · ~500 cal",d:"#1D9E75"},
+  {t:"5:00 PM",l:"Work ends",s:"Head home · change into gym clothes immediately",d:"#888780"},
+  {t:"5:40–5:45",l:"Gym (4 blocks)",s:"60–75 min session",d:"#7F77DD"},
+  {t:"7:00–7:30",l:"Post-workout dinner",s:"Largest meal · ~42g protein · ~1,000 cal · carb-heavy",d:"#1D9E75"},
+  {t:"8:00–9:30",l:"Wind-down window",s:"Low screens · light tasks · prep tomorrow",d:"#888780"},
+  {t:"9:30 PM",l:"Pre-bed snack (optional)",s:"Cottage cheese or casein shake · ~18g protein",d:"#1D9E75"},
+  {t:"10:00–10:30",l:"Lights out",s:"7.5–8 hrs sleep target",d:"#E24B4A"},
+];
+var WE=[
+  {t:"8:00–8:30",l:"Natural wake",s:"Stay within 1 hr of weekday time",d:"#378ADD"},
+  {t:"9:00 AM",l:"Morning meal + protein",s:"Same first-meal protein principle applies",d:"#1D9E75"},
+  {t:"10:30–12:00",l:"Gym or active recovery",s:"See split — Sat is flex/legs, Sun is rest",d:"#7F77DD"},
+  {t:"1:00 PM",l:"Lunch",s:"~700–800 cal",d:"#1D9E75"},
+  {t:"2:00–6:00",l:"Free / home work window",s:"Deep work if needed · errands · rest",d:"#888780"},
+  {t:"6:30–7:30",l:"Dinner",s:"~800–900 cal",d:"#1D9E75"},
+  {t:"8:30 PM",l:"Wind-down begins",s:"Prep for week — makes Monday easier",d:"#888780"},
+  {t:"10:00–10:30",l:"Lights out",s:"Consistent bedtime — even on weekends",d:"#E24B4A"},
+];
+var MV=[
+  {t:"7:00–8:00 AM",n:"Morning",p:28,c:500,note:"Shake + banana + oats · ~470g carbs/day means carbs at every window"},
+  {t:"12:00–1:00 PM",n:"Lunch",p:40,c:800,note:"Biggest midday meal · carb-heavy · rice, pasta, or potatoes alongside protein"},
+  {t:"3:30–4:30 PM",n:"Pre-workout",p:22,c:500,note:"Carb-forward · rice cakes + bar · prioritize fast carbs here"},
+  {t:"7:00–8:00 PM",n:"Post-workout dinner",p:42,c:1000,note:"Largest carb load of the day · pasta or rice + protein + veg"},
+  {t:"9:00–9:30 PM",n:"Pre-bed (optional)",p:18,c:300,note:"Slow protein · cottage cheese, casein, or nuts"},
+];
+var SP=[
+  {day:"Mon",type:"Gym",title:"Quads",muscles:"Front Squat · Back Squat · Cannonball · Quad Ext · Calves",tc:"#1e40af",bc:"#dbeafe"},
+  {day:"Tue",type:"Gym",title:"Push A",muscles:"Chest / Front Delts / Triceps — strength focus",tc:"#1e40af",bc:"#dbeafe"},
+  {day:"Wed",type:"Active",title:"Recovery walk + mobility",muscles:"20–30 min walk · foam rolling or stretching",tc:"#065f46",bc:"#d1fae5"},
+  {day:"Thu",type:"Gym",title:"Pull A + Hamstrings",muscles:"Back compounds · RDLs · Ham Curl · Bulgarian SS",tc:"#1e40af",bc:"#dbeafe"},
+  {day:"Fri",type:"Gym",title:"Push B",muscles:"Upper Chest / Shoulder Volume / Tricep Burnout",tc:"#1e40af",bc:"#dbeafe"},
+  {day:"Sat",type:"Gym",title:"Pull B",muscles:"Rear Delts / Biceps / Lat isolation — lighter volume",tc:"#1e40af",bc:"#dbeafe"},
+  {day:"Sun",type:"Rest",title:"Full rest",muscles:"Meal prep · set weekly intentions · review PRs",tc:"#4b5563",bc:"#f3f4f6"},
+];
+var RL=[
+  {color:"#2563eb",bg:"#eff6ff",title:"Missed the gym?",desc:"Do 15 min of something — a walk, push-ups, stretching. That counts. Slide the split day forward by one."},
+  {color:"#16a34a",bg:"#f0fdf4",title:"Missed a meal window?",desc:"Don't try to double up. Just hit the remaining windows cleanly. One miss doesn't break the day."},
+  {color:"#dc2626",bg:"#fef2f2",title:"Went to bed late?",desc:"Keep your wake time fixed. Don't shift the morning. Sleep debt is recovered over days, not one sleep-in."},
+  {color:"#9ca3af",bg:"#f9fafb",title:"Can't get started?",desc:"Commit only to the first step: put on gym clothes, or open the document. Starting is the only goal — the rest follows."},
+  {color:"#d97706",bg:"#fffbeb",title:"Slammed with work?",desc:"Protect Mon/Tue/Thu gym days as non-negotiable anchors. Fri and Sat flex around heavy project weeks."},
+  {color:"#6b7280",bg:"#f3f4f6",title:"Completely off the rails?",desc:"Re-enter at the next anchor: next morning wake, next meal window, or next Monday. Never restart from scratch."},
+];
+
+function drawTl(arr){
+  var c=document.getElementById('tl');
+  c.innerHTML=arr.map(function(item,i){
+    return '<div class="tl-row">'
+      +'<div class="tl-time">'+item.t+'</div>'
+      +'<div style="display:flex;flex-direction:column;align-items:center;">'
+      +'<div class="tl-dot" style="background:'+item.d+'"></div>'
+      +(i<arr.length-1?'<div style="width:1px;height:28px;background:#e5e3db"></div>':'')
+      +'</div>'
+      +'<div><div class="tl-label">'+item.l+'</div><div class="tl-sub">'+item.s+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function drawMacros(){
+  var c=document.getElementById('mc');
+  c.innerHTML=MV.map(function(m){
+    var pp=Math.round(m.p/150*100),cp=Math.round(m.c/3100*100);
+    return '<div class="mc">'
+      +'<div style="font-size:11px;color:#6b7280">'+m.t+'</div>'
+      +'<div style="font-size:14px;font-weight:500;margin:3px 0 8px">'+m.n+'</div>'
+      +'<div style="display:flex;gap:14px">'
+      +'<div style="flex:1"><div style="font-size:11px;color:#6b7280">Protein — '+m.p+'g</div>'
+      +'<div class="bar-bg"><div class="bar-fill" style="width:'+pp+'%;background:#7F77DD"></div></div></div>'
+      +'<div style="flex:1"><div style="font-size:11px;color:#6b7280">Calories — '+m.c+'</div>'
+      +'<div class="bar-bg"><div class="bar-fill" style="width:'+cp+'%;background:#1D9E75"></div></div></div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:#6b7280;margin-top:7px">'+m.note+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function drawSplit(){
+  var c=document.getElementById('sp');
+  c.innerHTML=SP.map(function(d){
+    return '<div class="split-row">'
+      +'<div style="font-size:13px;font-weight:500;color:#6b7280;min-width:32px">'+d.day+'</div>'
+      +'<span class="badge" style="background:'+d.bc+';color:'+d.tc+'">'+d.type+'</span>'
+      +'<div><div style="font-size:14px;font-weight:500">'+d.title+'</div>'
+      +'<div style="font-size:12px;color:#6b7280;margin-top:2px">'+d.muscles+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function drawRules(){
+  var c=document.getElementById('rl');
+  c.innerHTML=RL.map(function(r){
+    return '<div class="rule-card" style="border-left-color:'+r.color+';background:'+r.bg+'">'
+      +'<div style="font-size:14px;font-weight:500;color:#1c1c1a;margin-bottom:3px">'+r.title+'</div>'
+      +'<div style="font-size:13px;color:#4b5563">'+r.desc+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function showTab(name,el){
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('p-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+function setDay(type,el){
+  drawTl(type==='work'?WD:WE);
+  document.querySelectorAll('.day-pill').forEach(function(p){p.classList.remove('on');});
+  el.classList.add('on');
+}
+
+drawTl(WD);drawMacros();drawSplit();drawRules();
+</script>
+</body>
+</html>
